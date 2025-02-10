@@ -27,7 +27,13 @@ app_license = "MIT"
 # page_js = {"page" : "public/js/file.js"}
 
 # include js in doctype views
-# doctype_js = {"doctype" : "public/js/doctype.js"}
+doctype_js = {
+    "Request for Quotation" : "public/js/request_for_quotation.js",
+    "Material Request" : "public/js/material_request.js",
+    "Item" : "public/js/item.js",
+    "Sales Order" : "public/js/sales_order.js",
+    "Purchase Order" : "public/js/purchase_order.js",
+    }
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
@@ -109,13 +115,28 @@ app_license = "MIT"
 # Override standard doctype classes
 
 # override_doctype_class = {
-# 	"ToDo": "custom_app.overrides.CustomToDo"
+# 	"Production Plan": "kinjal_organics.public.py.production_plan.CustomToDo"
 # }
-
+override_doctype_class = {
+   "Production Plan": "kinjal_organics.public.py.production_plan.ProductionPlan"
+}
 # Document Events
 # ---------------
 # Hook on document methods and events
-
+doc_events = {
+    "Purchase Receipt":{
+        "on_submit":"kinjal_organics.public.py.purchase_receipt.update_purchase_receipt",
+        "on_cancel":"kinjal_organics.public.py.purchase_receipt.cancel_purchase_receipt"
+    },
+    "Purchase Invoice":{
+        "on_submit":"kinjal_organics.public.py.purchase_invoice.update_purchase_invoice",
+        "on_cancel":"kinjal_organics.public.py.purchase_invoice.cancel_purchase_invoice"
+    },
+    "Delivery Note":{
+        "on_submit":"kinjal_organics.public.py.delivery_note.update_delivery_note",
+        "on_cancel":"kinjal_organics.public.py.delivery_note.cancel_delivery_note"
+    },
+}
 # doc_events = {
 # 	"*": {
 # 		"on_update": "method",
@@ -154,8 +175,10 @@ app_license = "MIT"
 # ------------------------------
 #
 # override_whitelisted_methods = {
-# 	"frappe.desk.doctype.event.event.get_events": "kinjal_organics.event.get_events"
+#     "erpnext.manufacturing.doctype.production_plan.production_plan.get_sub_assembly_items": 
+#     "kinjal_organics.overrides.production_plan.get_sub_assembly_items"
 # }
+
 #
 # each overriding function accepts a `data` argument;
 # generated from the base implementation of the doctype dashboard,
@@ -213,3 +236,20 @@ app_license = "MIT"
 # auth_hooks = [
 # 	"kinjal_organics.auth.validate"
 # ]
+
+fixtures = [
+     {"dt":"Custom Field","filters":[
+        [
+            "module","in",[
+               "Kinjal Organics"
+            ],
+        ]
+    ]},
+     {"dt":"Report","filters":[
+        [
+        "module","in",[
+                "Kinjal Organics"
+            ]
+        ]
+    ]}
+]
