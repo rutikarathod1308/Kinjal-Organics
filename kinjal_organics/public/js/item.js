@@ -1,6 +1,6 @@
 frappe.ui.form.on("Item", {
     refresh: function(frm) {
-        if (frm.doc.item_group === "FINISH GOODS" || frm.doc.item_group === "Raw Material") {
+        if (frm.doc.item_group === "FINISH GOODS" || frm.doc.item_group === "RAW MATERIAL") {
             frm.fields_dict['reorder_levels'].df.reqd = 1;
             frm.fields_dict['valuation_method'].df.reqd = 1; // Make reorder_levels mandatory
             frm.refresh_field('reorder_levels');
@@ -13,7 +13,7 @@ frappe.ui.form.on("Item", {
         }
     },
     item_group: function(frm) {
-        if (frm.doc.item_group === "FINISH GOODS" || frm.doc.item_group === "Raw Material") {
+        if (frm.doc.item_group === "FINISH GOODS" || frm.doc.item_group === "RAW MATERIAL") {
             frm.fields_dict['reorder_levels'].df.reqd = 1;
             frm.fields_dict['valuation_method'].df.reqd = 1; // Make reorder_levels mandatory
             frm.refresh_field('reorder_levels');

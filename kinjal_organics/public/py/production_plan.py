@@ -4,7 +4,7 @@
 
 import copy
 import json
-
+import math
 import frappe
 from frappe import _, msgprint
 from frappe.model.document import Document
@@ -440,9 +440,9 @@ class ProductionPlan(Document):
 		self.set_status()
 		self.db_set("status", self.status)
 
-	def on_submit(self):
-		self.update_bin_qty()
-		self.update_sales_order()
+		def on_submit(self):
+			self.update_bin_qty()
+			self.update_sales_order()
 
 	def on_cancel(self):
 		self.db_set("status", "Cancelled")
@@ -828,11 +828,12 @@ class ProductionPlan(Document):
 				frappe.throw(_("Row #{0}: Please select the BOM No in Assembly Items").format(row.idx))
 
 			bom_data = []
+			item_data = []
 
 			warehouse = (self.sub_assembly_warehouse) if self.skip_available_sub_assembly_item else None
-			get_sub_assembly_items(row.bom_no, bom_data, row.planned_qty, self.company, warehouse=warehouse)
-			self.set_sub_assembly_items_based_on_level(row, bom_data, manufacturing_type)
-			sub_assembly_items_store.extend(bom_data)
+			get_sub_assembly_items(row.bom_no, item_data, row.planned_qty, self.company, warehouse=warehouse)
+			self.set_sub_assembly_items_based_on_level(row, item_data, manufacturing_type)
+			sub_assembly_items_store.extend(item_data)
 
 		if not sub_assembly_items_store and self.skip_available_sub_assembly_item:
 			message = (
@@ -1614,14 +1615,15 @@ def get_item_data(item_code):
 	}
 
 
-def get_sub_assembly_items(bom_no, bom_data, to_produce_qty, company, warehouse=None, indent=0):
+def get_sub_assembly_items(bom_no, item_data, to_produce_qty, company, warehouse=None, indent=0):
 	data = get_bom_children(parent=bom_no)
+	item = []
 	for d in data:
 		if d.expandable:
 			parent_item_code = frappe.get_cached_value("BOM", bom_no, "item")
 			stock_qty = (d.stock_qty / d.parent_bom_qty) * flt(to_produce_qty)
 			parent_item_qty = frappe.get_cached_value("BOM", d.value, "quantity")
-
+			
 			if warehouse:
 				bin_details = get_bin_details(d, company, for_warehouse=warehouse)
 
@@ -1632,62 +1634,50 @@ def get_sub_assembly_items(bom_no, bom_data, to_produce_qty, company, warehouse=
 							continue
 						else:
 							stock_qty = stock_qty - _bin_dict.projected_qty
-			item_len = round(stock_qty / parent_item_qty)
-			a = stock_qty
-			for data_qty in range(item_len):
-				if a > parent_item_qty :
-					a = a - parent_item_qty
-					
-					if stock_qty > 0:
-						bom_data.append(
-						frappe._dict(
-							{
-								"parent_item_code": parent_item_code,
-								"description": d.description,
-								"production_item": d.item_code,
-								"item_name": d.item_name,
-								"stock_uom": d.stock_uom,
-								"uom": d.stock_uom,
-								"bom_no": d.value,
-								"is_sub_contracted_item": d.is_sub_contracted_item,
-								"bom_level": indent,
-								"indent": indent,
-								"stock_qty": parent_item_qty,
-							}
-						)
-					)
 
-					if d.value:
-					
-						get_sub_assembly_items(
-							d.value, bom_data, stock_qty, company, warehouse, indent=indent + 1
-						)
-				else:
-					bom_data.append(
-						frappe._dict(
-							{
-								"parent_item_code": parent_item_code,
-								"description": d.description,
-								"production_item": d.item_code,
-								"item_name": d.item_name,
-								"stock_uom": d.stock_uom,
-								"uom": d.stock_uom,
-								"bom_no": d.value,
-								"is_sub_contracted_item": d.is_sub_contracted_item,
-								"bom_level": indent,
-								"indent": indent,
-								"stock_qty": a,
-							}
-						)
-					)
-
-					if d.value:
-					
-						get_sub_assembly_items(
-							d.value, bom_data, stock_qty, company, warehouse, indent=indent + 1
-						)
-					
+			item_len = max(1, math.ceil(stock_qty / parent_item_qty))
 			
+			remaining_qty = stock_qty
+			
+			for _ in range(item_len):
+				if remaining_qty >= parent_item_qty:
+					remaining_qty -= parent_item_qty
+					item.append({
+						"production_item": d.item_code,
+						"stock_qty": parent_item_qty,
+					})
+				else:
+					item.append({
+						"production_item": d.item_code,
+						"stock_qty": remaining_qty,
+					})
+
+			# Append only once per `d.value`, avoiding duplicate entries
+			for item_list in item:
+				if item_list["stock_qty"] > 0 :
+					item_data.append(
+						frappe._dict(
+							{
+								"parent_item_code": parent_item_code,
+								"description": d.description,
+								"production_item": item_list["production_item"],
+								"item_name": d.item_name,
+								"stock_uom": d.stock_uom,
+								"uom": d.stock_uom,
+								"bom_no": d.value,
+								"is_sub_contracted_item": d.is_sub_contracted_item,
+								"bom_level": indent,
+								"indent": indent,
+								"stock_qty": item_list["stock_qty"],
+							}
+						)
+					)
+
+				# Move recursive call outside the loop to avoid duplicate processing
+				if d.value:
+					get_sub_assembly_items(
+						d.value, item_data, stock_qty, company, warehouse, indent=indent + 1
+					)
 
 
 def set_default_warehouses(row, default_warehouses):

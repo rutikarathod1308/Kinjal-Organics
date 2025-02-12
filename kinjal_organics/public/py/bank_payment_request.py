@@ -38,6 +38,9 @@ def create_payment_request(selected_rows, company):
             supplier_bank_account = frappe.get_value(
                 "Bank Account", {"party": party, "party_type": "Supplier"}, "name"
             )
+            payment_type = frappe.get_value(
+                "Payment Type", {"company": company, "is_default": 1}, "name"
+            )
 
             # If no supplier bank account, use company’s default
             bank_account = supplier_bank_account or default_bank_account
@@ -58,6 +61,7 @@ def create_payment_request(selected_rows, company):
                     "mode_of_payment": "Wire Transfer",
                     "bank_account": bank_account,
                     "party_account_currency": supplier_currency,
+                    "payment_type" : payment_type
                 }
             )
 
