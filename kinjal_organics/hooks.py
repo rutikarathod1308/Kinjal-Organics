@@ -118,7 +118,7 @@ doctype_js = {
 # 	"Production Plan": "kinjal_organics.public.py.production_plan.CustomToDo"
 # }
 override_doctype_class = {
-   "Production Plan": "kinjal_organics.public.py.production_plan.ProductionPlan"
+   "Production Plan": "kinjal_organics.public.py.production_plan.custom_ProductionPlan_over"
 }
 # Document Events
 # ---------------
@@ -178,7 +178,10 @@ doc_events = {
 #     "erpnext.manufacturing.doctype.production_plan.production_plan.get_sub_assembly_items": 
 #     "kinjal_organics.overrides.production_plan.get_sub_assembly_items"
 # }
-
+override_whitelisted_methods = {
+    "erpnext.controllers.accounts_controller.update_child_qty_rate": 
+    "kinjal_organics.public.py.purchase_controller.update_child_qty_rate"
+}
 #
 # each overriding function accepts a `data` argument;
 # generated from the base implementation of the doctype dashboard,
