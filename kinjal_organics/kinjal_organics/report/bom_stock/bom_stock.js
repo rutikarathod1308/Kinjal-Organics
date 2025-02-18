@@ -34,7 +34,7 @@ frappe.query_reports["Bom Stock"] = {
         {
             fieldname: "qty_to_produce",
             label: __("Quantity to Produce"),
-            fieldtype: "Int",
+            fieldtype: "Data",
             default: "1",
         },
     ],
