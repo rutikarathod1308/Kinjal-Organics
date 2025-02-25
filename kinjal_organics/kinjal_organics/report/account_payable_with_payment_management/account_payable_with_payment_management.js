@@ -482,7 +482,7 @@ function listner_to_checkbox() {
 
 			checkbox.off('change').on('change', (function () {
 				if (this.checked) {
-					total_amount += row.invoice_grand_total;
+					total_amount += row.outstanding;
 					if (total_amount < 0) {
 						total_amount = 0
 					}
@@ -504,7 +504,7 @@ function listner_to_checkbox() {
 
 
 $(function () {
-	frappe.query_report.page.add_action_item('Create Bank Request', function () {
+	frappe.query_report.page.add_action_item('Create Bank Payment Request', function () {
 		const selected_rows = frappe.query_report.get_checked_items();
 		if (selected_rows.length === 0) {
 			frappe.msgprint(__("Please select at least one row to create payment request."));

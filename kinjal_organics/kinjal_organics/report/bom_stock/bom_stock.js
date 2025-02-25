@@ -8,15 +8,53 @@ frappe.query_reports["Bom Stock"] = {
             options: "BOM",
             reqd: 1,
             get_data: function (txt) {
-                return frappe.db.get_link_options("BOM", txt);
+                return frappe.db.get_link_options("BOM", txt, {
+                    docstatus: 1,
+                    is_default: 1,
+                    is_active: 1
+                });
             },
-            get_query: function () {
-                return {
-                    filters: { 
-                        docstatus: 1,
-                        is_default: 1  // Apply filter for default BOMs
+            "on_change": function () {
+                frappe.after_ajax(() => {
+                    let selected_boms = frappe.query_report.get_filter_value("bom") || [];
+                    console.log("Selected BOMs:", selected_boms);  
+
+                    if (selected_boms.length > 0) {
+                        let quantities = [];
+
+                        let fetchBOMQuantity = function (index) {
+                            if (index >= selected_boms.length) {
+                                let final_qty = quantities.join(", "); // Combine quantities with commas
+                                frappe.query_report.set_filter_value("qty_to_produce", final_qty || "1");
+                                frappe.query_report.refresh();
+                                return;
+                            }
+
+                            frappe.call({
+                                method: "frappe.client.get_value",
+                                args: {
+                                    doctype: "BOM",
+                                    filters: { name: selected_boms[index] },
+                                    fieldname: "quantity"
+                                },
+                                callback: function (r) {
+                                    if (r.message) {
+                                        console.log(`BOM: ${selected_boms[index]}, Quantity: ${r.message.quantity}`);
+                                        quantities.push(r.message.quantity);
+                                    } else {
+                                        quantities.push("1"); // Default if no quantity found
+                                    }
+                                    fetchBOMQuantity(index + 1); // Fetch next BOM
+                                }
+                            });
+                        };
+
+                        fetchBOMQuantity(0);
+                    } else {
+                        frappe.query_report.set_filter_value("qty_to_produce", "1"); // Default value
+                        frappe.query_report.refresh();
                     }
-                };
+                });
             }
         },
         {

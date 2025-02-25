@@ -68,7 +68,7 @@ def create_payment_request(selected_rows, company):
             payment_request.save()
             payment_request.submit()
             response["success"].append(
-                f"""<p>Payment Request for <a href="/app/supplier/{party}">{party}</a> - 
+                f"""<p>Bank Payment Request for <a href="/app/supplier/{party}">{party}</a> - 
                 <a href="{ref_doc.get_url()}">{row.get('voucher_no')}</a> - 
                 <a href="{payment_request.get_url()}">{payment_request.get('name')}</a> 
                 has been created successfully.</p>

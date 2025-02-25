@@ -27,7 +27,7 @@ def get_columns():
         _("BOM UoM") + "::160",
         _("Required Qty") + ":Float:120",
         _("In Stock Qty") + ":Float:120",
-        _("Enough Parts to Build") + ":Float:200",
+        _("Enough Days to Build") + ":Float:200",
         _("Difference Qty") + ":Float:120",
         _("Ordered Qty") + ":Float:120",
     ]
