@@ -129,9 +129,13 @@ doc_events = {
         "on_submit":"kinjal_organics.public.py.purchase_receipt.update_purchase_receipt",
         "on_cancel":"kinjal_organics.public.py.purchase_receipt.cancel_purchase_receipt"
     },
+    
     "Purchase Invoice":{
         "on_submit":"kinjal_organics.public.py.purchase_invoice.update_purchase_invoice",
         "on_cancel":"kinjal_organics.public.py.purchase_invoice.cancel_purchase_invoice"
+    },
+    "Sales Order": {
+        "on_update": "kinjal_organics.public.py.sales_order.update_pending_qty"
     },
     "Delivery Note":{
         "on_submit":"kinjal_organics.public.py.delivery_note.update_delivery_note",

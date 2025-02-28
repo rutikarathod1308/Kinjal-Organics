@@ -3229,8 +3229,9 @@ def update_child_qty_rate(parent_doctype, trans_items, parent_doctype_name, chil
 	_removed_items = validate_and_delete_children(parent, data)
 	items_added_or_removed |= _removed_items
     
-	frappe.db.set_value('Purchase Order',parent,'workflow_state','Re-Approve')
-    
+	frappe.db.set_value('Purchase Order',parent.name,'workflow_state','Re-Approve')
+	frappe.db.set_value('Sales Order',parent.name,'workflow_state','Re-Approve')
+	
 	for d in data:
 		new_child_flag = False
 
@@ -3257,6 +3258,7 @@ def update_child_qty_rate(parent_doctype, trans_items, parent_doctype_name, chil
 
 			if parent_doctype == "Sales Order":
 				prev_date, new_date = child_item.get("delivery_date"), d.get("delivery_date")
+				
 			elif parent_doctype == "Purchase Order":
 				prev_date, new_date = child_item.get("schedule_date"), d.get("schedule_date")
 
@@ -3384,6 +3386,7 @@ def update_child_qty_rate(parent_doctype, trans_items, parent_doctype_name, chil
 			parent.update_prevdoc_status()
 
 		parent.update_requested_qty()
+  
 		parent.update_ordered_qty()
 		parent.update_ordered_and_reserved_qty()
 		parent.update_receiving_percentage()
