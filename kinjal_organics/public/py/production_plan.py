@@ -29,8 +29,8 @@ from erpnext.stock.utils import get_or_make_bin
 from erpnext.utilities.transaction_base import validate_uom_is_integer
 from erpnext.manufacturing.doctype.production_plan.production_plan import ProductionPlan
 from erpnext.manufacturing.doctype.production_plan.production_plan import set_default_warehouses
-
-class custom_ProductionPlan_over(ProductionPlan):
+from chemical.chemical.doc_events.production_plan import CustomProductionPlan as _ProductionPlan 
+class custom_ProductionPlan_over(_ProductionPlan):
 	def on_submit(self):
     
 		self.update_bin_qty()
