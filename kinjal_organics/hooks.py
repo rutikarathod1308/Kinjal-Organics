@@ -246,6 +246,7 @@ override_whitelisted_methods = {
 # ]
 
 fixtures = [
+    "Workflow State",
      {"dt":"Custom Field","filters":[
         [
             "module","in",[
@@ -260,8 +261,5 @@ fixtures = [
             ]
         ]
     ]},
-      {
-         "dt":"Workflow State","filters":[
-         "name","=","Re-Approve"
-]}
+     
 ]
