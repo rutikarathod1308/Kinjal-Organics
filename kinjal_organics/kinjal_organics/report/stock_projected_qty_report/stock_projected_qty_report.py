@@ -90,7 +90,7 @@ def execute(filters=None):
 			conversion_factors.append(item.conversion_factor)
 
 	update_included_uom_in_report(columns, data, include_uom, conversion_factors)
-	return columns, data
+	return columns, data,item_map
 
 
 def get_columns():

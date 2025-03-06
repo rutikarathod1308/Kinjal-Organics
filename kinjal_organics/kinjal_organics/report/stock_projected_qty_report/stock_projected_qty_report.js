@@ -62,8 +62,7 @@ frappe.query_reports["Stock Projected Qty Report"] = {
 	
 			report.page.add_inner_button(__('Generate & Submit Material Requests'), function () {
 				let filters = report.get_values();
-	
-				// Fetch the report data
+			
 				frappe.call({
 					method: "frappe.desk.query_report.run",
 					args: {
@@ -73,46 +72,77 @@ frappe.query_reports["Stock Projected Qty Report"] = {
 					callback: function (response) {
 						if (response.message && response.message.result.length > 0) {
 							let report_data = response.message.result;
-	
-							// Filter and prepare data
-							let items = report_data
-								.map(row => ({
-									item_code: row.item_code,
-									warehouse: row.warehouse,
-									description: row.description,
-									uom: row.uom,
-									stock_uom: row.stock_uom,
-									required_by: frappe.datetime.nowdate(),
-									re_order_qty: Math.max(0, row.re_order_qty),
-									re_order_level: Math.max(0, row.re_order_level),
-									actual_qty: Math.max(0, row.actual_qty),
-									qty: Math.max(0, row.re_order_qty), // Ensure positive quantity
-									indented_qty: row.indented_qty
-								}))
-								.filter(item => item.indented_qty < item.re_order_qty && item.re_order_level > item.actual_qty);
-	
-							if (items.length === 0) {
+							let reorder_name = response.message.message;
+				
+							let grouped_items = {};
+				
+							// Group items by item_code and material_request_type
+							report_data.forEach(row => {
+								if (row.indented_qty < row.re_order_qty && row.re_order_level > row.actual_qty) {
+									let material_type = "";
+				
+									if (reorder_name[row.item_code]) {
+										for (let i = 0; i < reorder_name[row.item_code].reorder_levels.length; i++) {
+											let reorder_level = reorder_name[row.item_code].reorder_levels[i];
+				
+											if (row.item_code === reorder_level.parent && row.warehouse === reorder_level.warehouse) {
+												material_type = reorder_level.material_request_type === "Transfer" 
+													? "Material Transfer" 
+													: reorder_level.material_request_type;
+												break;
+											}
+										}
+									}
+				
+									let key = `${row.item_code}__${material_type}`; // Unique key for grouping
+				
+									if (!grouped_items[key]) {
+										grouped_items[key] = {
+											material_request_type: material_type,
+											items: []
+										};
+									}
+				
+									grouped_items[key].items.push({
+										item_code: row.item_code,
+										warehouse: row.warehouse,
+										description: row.description,
+										uom: row.uom,
+										stock_uom: row.stock_uom,
+										required_by: frappe.datetime.nowdate(),
+										re_order_qty: Math.max(0, row.re_order_qty),
+										re_order_level: Math.max(0, row.re_order_level),
+										actual_qty: Math.max(0, row.actual_qty),
+										qty: Math.max(0, row.re_order_qty),
+										indented_qty: row.indented_qty
+									});
+								}
+							});
+				
+							if (Object.keys(grouped_items).length === 0) {
 								frappe.msgprint(__('No items with re-order quantity greater than indented quantity available for Material Request.'));
 								return;
 							}
-	
-							// Create separate Material Requests for each item
-							items.forEach(item => {
+				
+							// Process each unique (item_code + material_request_type) group
+							Object.keys(grouped_items).forEach(key => {
+								let group = grouped_items[key];
+				
 								frappe.call({
 									method: "frappe.client.insert",
 									args: {
 										doc: {
 											doctype: "Material Request",
-											material_request_type: "Purchase",
 											schedule_date: frappe.datetime.nowdate(),
 											company: filters.company,
-											items: [item] // Single item per Material Request
+											items: group.items,
+											material_request_type: group.material_request_type
 										}
 									},
 									callback: function (res) {
 										if (res.message) {
 											let material_request_name = res.message.name;
-	
+				
 											// Submit the Material Request
 											frappe.call({
 												method: "frappe.client.submit",
@@ -125,22 +155,19 @@ frappe.query_reports["Stock Projected Qty Report"] = {
 														message: __('Material Request {0} has been submitted successfully.', [material_request_name]),
 														indicator: 'green'
 													});
-	
-													// Uncomment this if you want to redirect to the new Material Request form
-													// frappe.set_route("Form", "Material Request", material_request_name);
 												}
 											});
 										}
 									}
 								});
 							});
-	
-						} else {
-							frappe.msgprint(__('No data available for the selected filters.'));
 						}
 					}
 				});
+				
+				
 			});
+			
 		}
 	}
 	

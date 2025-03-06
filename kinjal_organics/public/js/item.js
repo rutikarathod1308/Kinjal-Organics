@@ -26,3 +26,25 @@ frappe.ui.form.on("Item", {
         }
     }
 });
+
+frappe.ui.form.on("Item Supplier", {
+    supplier: function(frm, cdt, cdn) {
+        var d = locals[cdt][cdn];
+
+        if (d.supplier) {
+            frappe.call({
+                method: "kinjal_organics.public.py.item.get_supplier_address",  // Update with your actual app path
+                args: {
+                    supplier: d.supplier
+                },
+                callback: function(response) {
+               
+                        console.log(response.message); 
+                        frappe.model.set_value(d.doctype, d.name, "custom_email_id", response.message);
+                    
+                }
+            });
+        }
+    }
+});
+
