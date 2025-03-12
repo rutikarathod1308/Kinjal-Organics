@@ -182,9 +182,14 @@ doc_events = {
 #     "kinjal_organics.overrides.production_plan.get_sub_assembly_items"
 # }
 override_whitelisted_methods = {
-    "kinjal.overrides.whitelisted.purchase_order.update_child_qty_rate": 
-    "kinjal_organics.public.py.purchase_controller.update_child_qty_rate"
+    "erpnext.controllers.accounts_controller.update_child_qty_rate": 
+        "kinjal_organics.public.py.purchase_controller.update_child_qty_rate"
 }
+
+# from kinjal.kinjal.overrides.whitelisted.purchase_order import update_child_qty_rate
+# from kinjal_organics.public.py.purchase_controller import update_child_qty_rate
+
+# update_child_qty_rate = update_child_qty_rate
 #
 # each overriding function accepts a `data` argument;
 # generated from the base implementation of the doctype dashboard,
