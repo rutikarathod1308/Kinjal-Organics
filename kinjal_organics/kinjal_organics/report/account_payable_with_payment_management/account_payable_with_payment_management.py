@@ -18,20 +18,6 @@ from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import (
 )
 from erpnext.accounts.utils import get_currency_precision
 
-#  This report gives a summary of all Outstanding Invoices considering the following
-
-#  1. Invoice can be booked via Sales/Purchase Invoice or Journal Entry
-#  2. Report handles both receivable and payable
-#  3. Key balances for each row are "Invoiced Amount", "Paid Amount", "Credit/Debit Note Amount", "Oustanding Amount"
-#  4. For explicit payment terms in invoice (example: 30% advance, 30% on delivery, 40% post delivery),
-#     the invoice will be broken up into multiple rows, one for each payment term
-#  5. If there are payments after the report date (post dated), these will be updated in additional columns
-#     for future amount
-#  6. Configurable Ageing Groups (0-30, 30-60 etc) can be set via filters
-#  7. For overpayment against an invoice with payment terms, there will be an additional row
-#  8. Invoice details like Sales Persons, Delivery Notes are also fetched comma separated
-#  9. Report amounts are in party currency if in_party_currency is selected, otherwise company currency
-# 10. This report is based on Payment Ledger Entries
 
 
 
@@ -722,8 +708,7 @@ class ReceivablePayableReport:
 
 	def set_ageing(self, row):
 		if self.filters.ageing_based_on == "Due Date":
-			# use posting date as a fallback for advances posted via journal and payment entry
-			# when ageing viewed by due date
+	
 			entry_date = row.due_date or row.posting_date
 		elif self.filters.ageing_based_on == "Supplier Invoice Date":
 			entry_date = row.bill_date

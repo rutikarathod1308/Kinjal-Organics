@@ -1,0 +1,12 @@
+[
+ {
+  "docstatus": 0,
+  "doctype": "Email Template",
+  "modified": "2025-03-17 17:10:35.925956",
+  "name": "Request for Quotation",
+  "response": "<div class=\"ql-editor read-mode\"><p>Dear {{contact.salutation}} {{contact.name}}</p><p><br></p><p>Kindly provide the price for following item/s along with technical specifications, COA and lead time :</p><p><br></p><p>Feel free to reach out if you have any questions or need further information.</p><p>Thank you for your prompt attention to this matter.</p><p>Best regards,</p><p>{{ user_fullname }}</p><p>{{company}}</p><p>{{ user_firstname }}</p></div>",
+  "response_html": "<html>\n  <head>\n    <title>Request for Quotation</title>\n  </head>\n  <body>\n\n    \n        <p>Dear {{supplier_name}}</p>\n   \n    <p style=\"font-size:15px\"><b>Kindly provide Lowest price for the following item along with payment terms and delivery terms and lead time:</b></p>\n    \n    <table border=\"1\" cellpadding=\"5\">\n      <tr>\n        <th>Sr</th> \n        <th>Item Name</th>\n        <th>Required Date</th>  \n        <th>Quantity</th> \n        <th>UOM</th>\n        <th>Warehouse</th>\n        <th>City</th>\n      </tr>\n{% for supplier in suppliers %}\n  {% if supplier.supplier == supplier_name %}\n  \n    {% set warehouses = supplier.custom_warehouse_name.split(\",\") %}\n    \n    {% for warehouse in warehouses %}\n      {% set warehouse_clean = warehouse.strip() %} {# Remove extra spaces #}\n      \n      {% for item in items %}\n        {% if warehouse_clean == item.warehouse.strip() %}\n          <tr>\n            <td>{{loop.index}}</td>\n            <td>{{item.item_name}}</td> \n            <td>{{item.schedule_date}}</td>\n            <td>{{item.qty}}</td>\n            <td>{{item.uom}}</td>\n            <td>{{item.warehouse}}</td>\n            <td>{{item.city or  '' }}</td>\n          </tr>\n        {% endif %}\n      {% endfor %}\n      \n    {% endfor %}\n    \n  {% endif %}\n{% endfor %}\n</table>\n    <br>\n    <p>Best Regards,</p>\n    <p><b>Bhavesh Patel</b></p>\n    <p><b>{{company}}</b></p>\n    \n  </body>\n</html>",
+  "subject": "Request for Quotation (RFQ) - {{supplier_name}} - {{name}}",
+  "use_html": 1
+ }
+]

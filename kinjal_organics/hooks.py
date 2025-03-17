@@ -264,5 +264,12 @@ fixtures = [
             ]
         ]
     ]},
+       {"dt":"Email Template","filters":[
+        [
+        "name","in",[
+                "Request for Quotation"
+            ]
+        ]
+    ]},
      
 ]

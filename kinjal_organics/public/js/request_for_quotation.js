@@ -1,6 +1,10 @@
 frappe.ui.form.on("Request for Quotation", {
     refresh: function (frm) {
-        if(frm.is_new()){
+        if (frm.is_new()) {
+            let supplierMap = {}; // Object to track suppliers by city and warehouses
+
+            frm.clear_table("suppliers"); // Clear the table before adding new entries
+
             frm.doc.items.forEach(function (item) {
                 if (item.item_code) {
                     frappe.call({
@@ -10,22 +14,41 @@ frappe.ui.form.on("Request for Quotation", {
                             name: item.item_code
                         },
                         callback: function (r) {
-                            if (r.message && r.message.supplier_items.length > 0 ) {
+                            if (r.message && r.message.supplier_items.length > 0) {
                                 let suppliers = r.message.supplier_items;
-                               
-                                // Loop through suppliers and add them to the suppliers table
+
+                                // Loop through suppliers and add/update them in the suppliers table
                                 suppliers.forEach(function (supplier_entry) {
-                                    if(item.warehouse === supplier_entry.custom_warehouse){
-                                       let row = frm.add_child("suppliers");
-                                    row.supplier = supplier_entry.supplier;
-                                    row.email_id = supplier_entry.custom_email_id
-                                    row.custom_city = supplier_entry.custom_city,
-                                    row.custom_warehouse = supplier_entry.custom_warehouse
+                                    if (item.warehouse === supplier_entry.custom_warehouse) {
+                                        let supplierKey = supplier_entry.supplier + "|" + supplier_entry.custom_city; // Unique key based on supplier & city
+
+                                        if (supplierMap[supplierKey]) {
+                                            // Append warehouse if supplier+city already exists
+                                            if (!supplierMap[supplierKey].warehouses.includes(supplier_entry.custom_warehouse)) {
+                                                supplierMap[supplierKey].warehouses.push(supplier_entry.custom_warehouse);
+                                            }
+                                        } else {
+                                            // Create a new supplier entry
+                                            supplierMap[supplierKey] = {
+                                                supplier: supplier_entry.supplier,
+                                                email_id: supplier_entry.custom_email_id,
+                                                custom_city: supplier_entry.custom_city,
+                                                warehouses: [supplier_entry.custom_warehouse]
+                                            };
+                                        }
                                     }
-                                 
-                                   
                                 });
-                                
+
+                                // Populate the suppliers table with combined warehouse names
+                                frm.clear_table("suppliers");
+                                Object.values(supplierMap).forEach((supplierData) => {
+                                    let row = frm.add_child("suppliers");
+                                    row.supplier = supplierData.supplier;
+                                    row.email_id = supplierData.email_id;
+                                    row.custom_city = supplierData.custom_city;
+                                    row.custom_warehouse_name = supplierData.warehouses.join(", "); // Combine warehouses
+                                });
+
                                 // Refresh the field to show added suppliers
                                 frm.refresh_field("suppliers");
                             }
@@ -33,12 +56,6 @@ frappe.ui.form.on("Request for Quotation", {
                     });
                 }
             });
-            frm.clear_table("suppliers");
         }
-        // Ensure that the suppliers table is empty before adding new suppliers
-      
-
-        // Loop through each item in the child table
-        
     }
 });
