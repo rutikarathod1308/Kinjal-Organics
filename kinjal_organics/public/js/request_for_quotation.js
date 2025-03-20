@@ -20,7 +20,7 @@ frappe.ui.form.on("Request for Quotation", {
                                 // Loop through suppliers and add/update them in the suppliers table
                                 suppliers.forEach(function (supplier_entry) {
                                     if (item.warehouse === supplier_entry.custom_warehouse) {
-                                        let supplierKey = supplier_entry.supplier + "|" + supplier_entry.custom_city; // Unique key based on supplier & city
+                                        let supplierKey = supplier_entry.supplier  // Unique key based on supplier 
 
                                         if (supplierMap[supplierKey]) {
                                             // Append warehouse if supplier+city already exists

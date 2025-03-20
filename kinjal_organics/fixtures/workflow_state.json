@@ -39,15 +39,6 @@
   "docstatus": 0,
   "doctype": "Workflow State",
   "icon": "",
-  "modified": "2022-02-26 12:16:02.888467",
-  "name": "Enabled",
-  "style": "Success",
-  "workflow_state_name": "Enabled"
- },
- {
-  "docstatus": 0,
-  "doctype": "Workflow State",
-  "icon": "",
   "modified": "2022-03-22 15:02:40.642524",
   "name": "Checked",
   "style": "",
@@ -106,6 +97,15 @@
   "name": "Tested",
   "style": "",
   "workflow_state_name": "Tested"
+ },
+ {
+  "docstatus": 0,
+  "doctype": "Workflow State",
+  "icon": "",
+  "modified": "2022-02-26 12:16:02.888467",
+  "name": "Enabled",
+  "style": "Success",
+  "workflow_state_name": "Enabled"
  },
  {
   "docstatus": 0,
