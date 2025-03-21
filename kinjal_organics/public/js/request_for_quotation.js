@@ -79,3 +79,19 @@ frappe.ui.form.on("Request for Quotation", {
 });
 
 
+frappe.ui.form.on("Request for Quotation Item", "warehouse", function(frm, cdt, cdn) {
+    var d = locals[cdt][cdn];  // Get the current row's data
+    frappe.call({
+        method: "frappe.client.get",
+        args: {
+            doctype: "Warehouse",
+            name: d.warehouse
+        },
+        callback: function(wh) {
+            if (wh.message) {
+                let city = wh.message.city || "";  // Fetch city from warehouse
+                frappe.model.set_value(d.doctype, d.name, "city", city);  // Set city in item table
+            }
+        }
+    });
+});
