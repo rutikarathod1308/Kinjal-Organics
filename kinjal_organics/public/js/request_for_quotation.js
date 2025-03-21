@@ -55,7 +55,27 @@ frappe.ui.form.on("Request for Quotation", {
                         }
                     });
                 }
+                if (item.item_code && item.warehouse) {
+                    
+                    // Fetch warehouse details to get the city
+                    frappe.call({
+                        method: "frappe.client.get",
+                        args: {
+                            doctype: "Warehouse",
+                            name: item.warehouse
+                        },
+                        callback: function (wh) {
+                            if (wh.message) {
+                                let city = wh.message.city || "";  // Fetch city from warehouse
+                                frappe.model.set_value(item.doctype, item.name, "city", city);  // Set city in item table
+                            }
+                        }
+                    });
+                }
             });
+        
         }
     }
 });
+
+
