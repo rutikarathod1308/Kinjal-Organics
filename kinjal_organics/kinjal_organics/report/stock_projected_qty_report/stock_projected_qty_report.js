@@ -78,7 +78,7 @@ frappe.query_reports["Stock Projected Qty Report"] = {
 				
 							// Group items by item_code and material_request_type
 							report_data.forEach(row => {
-								if (row.indented_qty < row.re_order_qty && row.re_order_level > row.actual_qty) {
+								if (row.shortage_qty > 0) {
 									let material_type = "";
 				
 									if (reorder_name[row.item_code]) {
@@ -113,8 +113,7 @@ frappe.query_reports["Stock Projected Qty Report"] = {
 										re_order_qty: Math.max(0, row.re_order_qty),
 										re_order_level: Math.max(0, row.re_order_level),
 										actual_qty: Math.max(0, row.actual_qty),
-										qty: Math.max(0, row.re_order_qty),
-										indented_qty: row.indented_qty
+										qty: Math.max(0, row.shortage_qty)
 									});
 								}
 							});

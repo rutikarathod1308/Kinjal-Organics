@@ -139,6 +139,9 @@ doc_events = {
         "on_submit":"kinjal_organics.public.py.delivery_note.update_delivery_note",
         "on_cancel":"kinjal_organics.public.py.delivery_note.cancel_delivery_note"
     },
+    "Purchase Order":{
+        "on_update":"kinjal_organics.public.py.purchase_order.update_qty",
+    }
 }
 # doc_events = {
 # 	"*": {
@@ -182,9 +185,10 @@ doc_events = {
 #     "kinjal_organics.overrides.production_plan.get_sub_assembly_items"
 # }
 override_whitelisted_methods = {
-    "erpnext.controllers.accounts_controller.update_child_qty_rate": 
-        "kinjal_organics.public.py.purchase_controller.update_child_qty_rate"
+    "kinjal.overrides.whitelisted.purchase_order.update_child_qty_rate": 
+        "kinjal_organics.public.py.purchase_controller.customupdate_child_qty_rate"
 }
+
 
 # from kinjal.kinjal.overrides.whitelisted.purchase_order import update_child_qty_rate
 # from kinjal_organics.public.py.purchase_controller import update_child_qty_rate
