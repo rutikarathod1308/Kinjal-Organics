@@ -8,7 +8,7 @@ frappe.ui.form.on('Payment Entry', {
                 frm.set_df_property('payment_type', 'read_only', 1);
             }
             else if(user_roles[i] == "Payment Receive"){
-                frm.set_value('payment_type', 'Pay');
+                frm.set_value('payment_type', 'Receive');
                 frm.set_df_property('payment_type', 'read_only', 1);
             }
         }

@@ -182,10 +182,6 @@ doc_events = {
 #     "kinjal_organics.overrides.production_plan.get_sub_assembly_items"
 # }
 # kinjal_organics/hooks.py
-override_whitelisted_methods = {
-    "kinjal.overrides.whitelisted.purchase_order.update_child_qty_rate": 
-        "kinjal_organics.public.purchase_controller.custom_update_child_qty_rate"
-}
 
 
 # from kinjal.kinjal.overrides.whitelisted.purchase_order import update_child_qty_rate
@@ -270,6 +266,13 @@ fixtures = [
         [
         "name","in",[
                 "Request for Quotation"
+            ]
+        ]
+    ]},
+        {"dt":"Workflow","filters":[
+        [
+        "name","in",[
+                "Sales Order"
             ]
         ]
     ]},
