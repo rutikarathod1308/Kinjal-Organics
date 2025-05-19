@@ -102,18 +102,18 @@
   "docstatus": 0,
   "doctype": "Workflow State",
   "icon": "",
-  "modified": "2022-02-26 12:16:02.888467",
-  "name": "Enabled",
-  "style": "Success",
-  "workflow_state_name": "Enabled"
+  "modified": "2022-03-22 17:05:15.682741",
+  "name": "Draft",
+  "style": "",
+  "workflow_state_name": "Draft"
  },
  {
   "docstatus": 0,
   "doctype": "Workflow State",
   "icon": "",
-  "modified": "2022-03-22 17:05:15.682741",
-  "name": "Draft",
-  "style": "",
-  "workflow_state_name": "Draft"
+  "modified": "2022-02-26 12:16:02.888467",
+  "name": "Enabled",
+  "style": "Success",
+  "workflow_state_name": "Enabled"
  }
 ]
