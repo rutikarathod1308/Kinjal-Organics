@@ -95,3 +95,24 @@ frappe.ui.form.on("Request for Quotation Item", "warehouse", function(frm, cdt, 
         }
     });
 });
+
+frappe.ui.form.on("Request for Quotation", {
+    before_save: function(frm) {
+        $.each(frm.doc.suppliers || [], function(i, d) {
+            frappe.call({
+                method: "frappe.client.get",
+                args: {
+                    doctype: "Supplier",
+                    name: d.supplier
+                },
+                callback: function(sup) {
+                    if (sup.message) {
+                        if (sup.message.disabled || sup.message.is_frozen || sup.message.on_hold) {
+                            frappe.model.set_value(d.doctype, d.name, "send_email", 0);
+                        }
+                    }
+                }
+            });
+        });
+    }
+});

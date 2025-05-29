@@ -25,7 +25,10 @@ app_license = "MIT"
 
 # include js in page
 # page_js = {"page" : "public/js/file.js"}
+from erpnext.controllers import status_updater
+from kinjal_organics.public.py.oveeride_status_updater import custom_StatusUpdater
 
+status_updater.StatusUpdater.limits_crossed_error = custom_StatusUpdater.limits_crossed_error
 # include js in doctype views
 doctype_js = {
     "Request for Quotation" : "public/js/request_for_quotation.js",
@@ -131,6 +134,7 @@ override_doctype_class = {
 doc_events = {
     "Purchase Receipt":{
         "on_submit":"kinjal_organics.public.py.purchase_receipt.update_purchase_receipt",
+        # "onload":"kinjal_organics.public.py.purchase_receipt.cancel_po_qty_update",
         "on_cancel":"kinjal_organics.public.py.purchase_receipt.cancel_purchase_receipt"
     },
     
@@ -282,3 +286,4 @@ fixtures = [
     ]},
      
 ]
+

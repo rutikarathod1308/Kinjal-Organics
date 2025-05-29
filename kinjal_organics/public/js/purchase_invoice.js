@@ -65,6 +65,55 @@ frappe.ui.form.on('Purchase Invoice', {
                 }
             });
         });
+        //    setTimeout(() => {
+        //     frm.remove_custom_button('Update Items');
+        //     frm.remove_custom_button('Purchase Order', 'Get Items From');
+        //     frm.remove_custom_button('Purchase Receipt', 'Get Items From');
+        // }, 100);
+        // Add custom "Purchase Order" button under "Get Item From"
+        frm.add_custom_button(__('Purchase Receipt'), function () {
+            if (!frm.doc.supplier) {
+                frappe.throw({
+                    title: __("Mandatory"),
+                    message: __("Please Select a Supplier")
+                });
+            }
+
+                erpnext.utils.map_current_doc({
+                method: "kinjal_organics.public.py.purchase_invoice.make_purchase_invoice",  // path must match actual Python file
+                source_doctype: "Purchase Receipt",  // this was the mistake!
+                target: frm,
+                setters: {
+                    supplier: me.frm.doc.supplier || undefined,
+                    posting_date: undefined,
+                    set_warehouse: undefined,
+                    supplier_delivery_note: undefined
+                },
+                allow_child_item_selection: 1,
+                child_fieldname: "items",
+                child_columns: ["item_code", "received_qty"],
+                get_query_filters: {
+                    docstatus: 1,
+                    status: ["not in", ["Closed", "Completed", "Return Issued"]],
+                    company: frm.doc.company,
+                    is_return: 0,
+                    per_billed: ["<", 99.99],
+                
+                },
+                callback: function() {
+                    frm.doc.items.forEach(row => {
+                        if (row.item_code) {
+                            frappe.model.set_value(row.doctype, row.name, 'custom_raw_value', row.item_code.toUpperCase());
+                        }
+                    });
+                    frm.refresh_field('items');
+                    frappe.show_alert({ message: __("Items fetched from Purchase Receipt"), indicator: 'green' });
+                }
+            });
+
+
+        }, __("Get Item From"));
     }
 })
+
 

@@ -105,6 +105,13 @@ frappe.ui.form.on("Purchase Order Item", {
                     name: row.item_code
                 },
                 callback: function(res) {
+                    var supplier_items = res.message.supplier_items
+                    for (var s = 0; s < supplier_items.length; s++) {
+                        if(frm.doc.supplier === supplier_items[s].supplier){
+                        frm.set_value("contact_mobile", supplier_items[s].custom_phone_number);
+                        frm.set_value("contact_email", supplier_items[s].custom_email_id);
+                        }
+                    }
                     if (res.message && res.message.custom_warehouse_item) {
                         let valid_warehouses = [];
 
