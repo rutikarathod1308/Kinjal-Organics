@@ -29,6 +29,8 @@ def get_columns():
         {"label": _("Enough Days to Build"), "fieldname": "enough_days", "fieldtype": "Float", "width": 200},
         {"label": _("Difference Qty"), "fieldname": "difference_qty", "fieldtype": "Float", "width": 120,"hidden": 1},
         {"label": _("Ordered Qty"), "fieldname": "ordered_qty", "fieldtype": "Float", "width": 120},
+        {"label": _("Future Days MFG"), "fieldname": "future_days_mfg", "fieldtype": "Float", "width": 140},
+        {"label": _("Total Days MFG"), "fieldname": "total_days_mfg", "fieldtype": "Float", "width": 140},
     ]
 
     return columns

@@ -41,8 +41,10 @@ doctype_js = {
     "Purchase Receipt" : "public/js/purchase_receipt.js",
     "Sales Invoice" : "public/js/sales_invoice.js",
     "Delivery Note" : "public/js/delivery_note.js",
+    "BOM":"public/js/bom.js"
     }
-# doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
+doctype_list_js = {"Material Request" : "public/js/material_request_list.js",
+                   "Request for Quotation" : "public/js/request_for_quotation_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
 
@@ -140,12 +142,20 @@ doc_events = {
     
     "Purchase Invoice":{
         "on_submit":"kinjal_organics.public.py.purchase_invoice.update_purchase_invoice",
-        "on_cancel":"kinjal_organics.public.py.purchase_invoice.cancel_purchase_invoice"
+        "on_cancel":"kinjal_organics.public.py.purchase_invoice.cancel_purchase_invoice",
+        "after_insert" :"kinjal_organics.public.py.purchase_invoice.generate_journal_entry",
     },
    
     "Delivery Note":{
         "on_submit":"kinjal_organics.public.py.delivery_note.update_delivery_note",
         "on_cancel":"kinjal_organics.public.py.delivery_note.cancel_delivery_note"
+    },
+    "Request for Quotation":{
+        "on_submit":"kinjal_organics.public.py.rfq.update_status"
+    },
+    "Supplier Quotation":{
+        "on_submit":"kinjal_organics.public.py.supplier_quotation.update_status",
+        "on_cancel":"kinjal_organics.public.py.supplier_quotation.cancel_update_status",
     }
 }
 # doc_events = {

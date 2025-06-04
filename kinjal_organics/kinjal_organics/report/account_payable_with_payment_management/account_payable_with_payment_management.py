@@ -438,7 +438,7 @@ class ReceivablePayableReport:
 				as_dict=1,
 			):
 				self.invoice_details.setdefault(pi.name, pi)
-
+		
 		# Invoices booked via Journal Entries
 		journal_entries = frappe.db.sql(
 			"""
@@ -605,6 +605,7 @@ class ReceivablePayableReport:
 		).run(as_dict=True)
 
 	def get_future_payments_from_journal_entry(self):
+		
 		je = frappe.qb.DocType("Journal Entry")
 		jea = frappe.qb.DocType("Journal Entry Account")
 		query = (
@@ -709,7 +710,7 @@ class ReceivablePayableReport:
 	def set_ageing(self, row):
 		if self.filters.ageing_based_on == "Due Date":
 	
-			entry_date = row.due_date or row.posting_date
+			entry_date = row.due_date
 		elif self.filters.ageing_based_on == "Supplier Invoice Date":
 			entry_date = row.bill_date
 		else:
@@ -1161,6 +1162,7 @@ class ReceivablePayableReport:
 		}
 
 	def get_exchange_rate_revaluations(self):
+     
 		je = qb.DocType("Journal Entry")
 		results = (
 			qb.from_(je)

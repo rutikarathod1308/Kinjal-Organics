@@ -163,3 +163,23 @@ frappe.ui.form.on("Purchase Receipt", {
         }, __("Get Item From"));
     }
 });
+
+frappe.ui.form.on("Purchase Receipt", {
+    validate: async function (frm) {
+        for (let row of frm.doc.items || []) {
+            if (row.purchase_order) {
+                const r = await frappe.call({
+                    method: "frappe.client.get",
+                    args: {
+                        doctype: "Purchase Order",
+                        name: row.purchase_order
+                    }
+                });
+
+                if (r.message && r.message.workflow_state === "Re-Approve") {
+                    frappe.throw(__(" linked Purchase Order {0} is in 'Re-Approve' Please Aprroved Purchase Order.", [row.purchase_order]));
+                }
+            }
+        }
+    }
+});

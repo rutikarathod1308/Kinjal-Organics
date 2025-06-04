@@ -41,3 +41,86 @@ def cancel_pending_qty(doc_name, **kwargs):  # Accept extra arguments
             frappe.logger().info(f"Updated Pending Qty for {so_item.item_code}: {pending_qty}")
 
     frappe.db.commit()
+
+
+
+from frappe.contacts.doctype.address.address import get_company_address 
+from frappe.model.utils import get_fetch_values
+from frappe.utils import flt, cstr
+from erpnext.stock.doctype.packed_item.packed_item import make_packing_list
+from erpnext.stock.doctype.item.item import get_item_defaults
+from erpnext.setup.doctype.item_group.item_group import get_item_group_defaults
+from frappe.model.mapper import get_mapped_doc
+import frappe
+
+@frappe.whitelist()
+def make_sales_invoice(source_name, target_doc=None, args=None):
+    def update_item(source, target, source_parent):
+        target.base_amount = (flt(source.qty) - flt(source.qty)) * flt(source.base_rate)
+        target.amount = (flt(source.qty) - flt(source.qty)) * flt(source.rate)
+        target.qty = flt(source.qty) 
+        
+        if source.packing_size and source.no_of_packages:
+            target.no_of_packages = target.qty / source.packing_size
+        target.sales_order = source.against_sales_order
+        target.cost_center = source_parent.cost_center
+        target.sales_order_item = source.name
+        item = get_item_defaults(target.item_code, source_parent.company)
+        item_group = get_item_group_defaults(target.item_code, source_parent.company)
+
+        # if item:
+        #     target.cost_center = (
+        #         frappe.db.get_value("Project", source_parent.project, "cost_center")
+        #         or item.get("buying_cost_center")
+        #         or item_group.get("buying_cost_center")
+        #     )
+    mapper = {
+		"Sales Order": {"doctype": "Sales Invoice", "validation": {"docstatus": ["=", 1]}},
+		"Payment Schedule":{
+			"doctype":"Payment Schedule",
+			"field_map":{
+				"name":"payment_schedule",
+				"payment_term":"payment_term",
+				"due_date":"due_date",
+				"invoice_portion":"invoice_portion",
+				"discount_type":"discount_type",
+				"discount":"discount",
+				"payment_amount":"payment_amount",
+				"base_payment_amount":"base_payment_amount",
+				"outstanding":"outstanding"
+			}
+		},
+		"Sales Taxes and Charges": {"doctype": "Sales Taxes and Charges", "add_if_empty": True},
+		"Sales Team": {"doctype": "Sales Team", "add_if_empty": True},
+	}
+
+    
+    doc = get_mapped_doc(
+        "Delivery Note",
+        source_name,
+        {
+            "Delivery Note": {
+                "doctype": "Delivery Note",
+                "validation": {"docstatus": ["=", 1]},
+            },
+            "Delivery Note Item": {
+                "doctype": "Sales Invoice Item",
+                "field_map": {
+                    "name": "delivery_note_item",
+                    "parent": "delivery_note",
+                    "qty": "qty",
+                    "name": "delivery_note_item",
+                    
+                },
+                "postprocess": update_item,
+              
+            },
+            "Sales Taxes and Charges": {
+                "doctype": "Sales Taxes and Charges",
+                "add_if_empty": True,
+            },
+        },
+        target_doc
+    )
+
+    return doc

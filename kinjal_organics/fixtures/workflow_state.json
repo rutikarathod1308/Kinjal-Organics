@@ -12,15 +12,6 @@
   "docstatus": 0,
   "doctype": "Workflow State",
   "icon": "",
-  "modified": "2022-02-18 12:38:45.675350",
-  "name": "Applied",
-  "style": "",
-  "workflow_state_name": "Applied"
- },
- {
-  "docstatus": 0,
-  "doctype": "Workflow State",
-  "icon": "",
   "modified": "2022-02-18 12:40:57.156657",
   "name": "Cancelled",
   "style": "",
@@ -88,6 +79,15 @@
   "name": "Re-Approve",
   "style": "",
   "workflow_state_name": "Re-Approve"
+ },
+ {
+  "docstatus": 0,
+  "doctype": "Workflow State",
+  "icon": "",
+  "modified": "2022-02-18 12:38:45.675350",
+  "name": "Applied",
+  "style": "",
+  "workflow_state_name": "Applied"
  },
  {
   "docstatus": 0,

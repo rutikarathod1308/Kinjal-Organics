@@ -51,6 +51,50 @@ frappe.ui.form.on("Sales Invoice", {
                 }
             });
         });
+        //  setTimeout(() => {
+         
+        //     frm.remove_custom_button('Sales Order', 'Get Items From');
+        //     frm.remove_custom_button('Quotation', 'Get Items From');
+        //     frm.remove_custom_button('Delivery Note', 'Get Items From');
+          
+        // }, 100);
+       
+        // Add custom "Purchase Order" button under "Get Item From"
+        frm.add_custom_button(__('Delivery Note'), function () {
+            if (!frm.doc.customer) {
+                frappe.throw({
+                    title: __("Mandatory"),
+                    message: __("Please Select a Customer")
+                });
+            }
+
+               erpnext.utils.map_current_doc({
+                method: "kinjal_organics.public.py.sales_order.make_sales_invoice",
+                source_doctype: "Delivery Note",
+                target: frm,
+                setters: {
+                    customer: frm.doc.customer || undefined,
+                    posting_date : undefined,
+                    set_warehouse: undefined
+                },
+                allow_child_item_selection: 1,
+                child_fieldname: "items",
+                child_columns: ["item_code", "rate","qty", "warehouse"],
+                get_query_filters: {
+                    docstatus: 1,
+                    status: ["not in", ["Closed", "Completed", "Return Issued"]],
+                    company: frm.doc.company,
+                    per_billed: ["<", 99.99],
+                  
+                },
+                callback: function () {
+                    frappe.show_alert({ message: __("Items fetched from Delivery Note"), indicator: 'green' });
+                    frm.refresh_field("items");
+                }
+            });
+
+
+        }, __("Get Item From"));
     }
 });
 

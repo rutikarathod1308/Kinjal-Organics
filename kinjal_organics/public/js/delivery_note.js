@@ -51,6 +51,49 @@ frappe.ui.form.on("Delivery Note", {
                 }
             });
         });
+         setTimeout(() => {
+         
+            frm.remove_custom_button('Sales Order', 'Get Items From');
+            frm.remove_custom_button('Sales Invoice', 'Get Items From');
+          
+        }, 100);
+       
+        // Add custom "Purchase Order" button under "Get Item From"
+        frm.add_custom_button(__('Sales Order'), function () {
+            if (!frm.doc.customer) {
+                frappe.throw({
+                    title: __("Mandatory"),
+                    message: __("Please Select a Customer")
+                });
+            }
+
+               erpnext.utils.map_current_doc({
+                method: "kinjal_organics.public.py.delivery_note.make_delivery_note",
+                source_doctype: "Sales Order",
+                target: frm,
+                setters: {
+                    customer: frm.doc.customer || undefined,
+                    transaction_date : undefined,
+                    set_warehouse: undefined
+                },
+                allow_child_item_selection: 1,
+                child_fieldname: "items",
+                child_columns: ["item_code", "rate","custom_pending_qty", "warehouse"],
+                get_query_filters: {
+                    docstatus: 1,
+                    status: ["not in", ["Closed", "Completed", "Return Issued"]],
+                    company: frm.doc.company,
+                    per_billed: ["<", 99.99],
+                    workflow_state: ["not in", ["Re-Approve"]],
+                },
+                callback: function () {
+                    frappe.show_alert({ message: __("Items fetched from Sales Order"), indicator: 'green' });
+                    frm.refresh_field("items");
+                }
+            });
+
+
+        }, __("Get Item From"));
     }
 });
 
@@ -108,5 +151,25 @@ frappe.ui.form.on("Delivery Note Item", {
                 }
             });
      
+    }
+});
+
+frappe.ui.form.on("Delivery Note", {
+    validate: async function (frm) {
+        for (let row of frm.doc.items || []) {
+            if (row.against_sales_order) {
+                const r = await frappe.call({
+                    method: "frappe.client.get",
+                    args: {
+                        doctype: "Sales Order",
+                        name: row.against_sales_order
+                    }
+                });
+
+                if (r.message && r.message.workflow_state === "Re-Approve") {
+                    frappe.throw(__(" linked Sales Order {0} is in 'Re-Approve'. Please Aprroved Sales Order.", [row.against_sales_order]));
+                }
+            }
+        }
     }
 });

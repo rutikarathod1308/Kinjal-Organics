@@ -1,5 +1,11 @@
 import frappe
 from frappe import _
+import json
+from frappe import _, msgprint
+from frappe.desk.notifications import clear_doctype_notifications
+from frappe.model.mapper import get_mapped_doc
+from frappe.utils import cint, cstr, flt
+import time
 
 def update_purchase_invoice(doc=None, method=None):
     frappe.enqueue(update_pending_qty, queue="long", doc=doc.name)
@@ -45,13 +51,49 @@ def cancel_pending_qty(doc):
                 frappe.db.set_value("Purchase Order Item", po_item.name, "custom_pending_qty", pending_qty)
                 frappe.msgprint(f"Updated Pending Qty for {po_item.item_code}: {pending_qty}")
                 
-import json
 
-import frappe
-from frappe import _, msgprint
-from frappe.desk.notifications import clear_doctype_notifications
-from frappe.model.mapper import get_mapped_doc
-from frappe.utils import cint, cstr, flt
+def generate_journal_entry(self, methode=None):
+    if not self.journal_entry and self.total_deduct_amount > 0:
+    
+        from erpnext.accounts.doctype.journal_entry.journal_entry import get_default_bank_cash_account
+        from frappe.utils import nowdate
+        import frappe
+
+        # Create Journal Entry Document
+        je = frappe.new_doc("Journal Entry")
+        je.voucher_type = "Credit Note"
+        je.posting_date = self.posting_date
+        je.company = self.company
+        je.remark = f"Deduction against {self.name} for supplier {self.supplier}"
+
+        # Debit Entry (Supplier)
+        je.append("accounts", {
+            "account": self.credit_to,  # You need to set this field in your DocType or map it from Supplier
+            "party_type": "Supplier",
+            "cost_center":self.cost_center,
+            "party": self.supplier,
+            "debit_in_account_currency": self.total_deduct_amount,
+            "reference_type": self.doctype,
+            "reference_name": self.name
+        })
+
+        # Credit Entry (e.g. Expense or Liability)
+        je.append("accounts", {
+            "cost_center":self.cost_center,
+            "party_type": "Supplier",
+            "party": self.supplier,
+            "account": self.credit_to,  # You need to define this field or hardcode it
+            "credit_in_account_currency": self.total_deduct_amount,
+        })
+
+        je.save()
+      
+
+        # Link Journal Entry to your custom DocType
+        self.journal_entry = je.name
+        self.db_set("journal_entry", je.name)  # persist in DB
+        self.credit_amount = je.total_credit
+        self.db_set("credit_amount", je.total_credit)
 
 
           
@@ -64,7 +106,9 @@ def make_purchase_invoice(source_name, target_doc=None, args=None):
         target_doc.rate = flt(source_doc.rate)
         target_doc.amount = target_doc.qty * target_doc.rate
         target_doc.base_amount = target_doc.amount * flt(source_parent.conversion_rate or 1)
-
+        target_doc.expense_account = source_doc.expense_account
+        target_doc.purchase_order = source_doc.purchase_order
+        target_doc.po_detail = source_doc.purchase_order_item
         # Optional: if you want to handle item group = 'Raw Materials' logic
         if args and frappe.parse_json(args).get("material_type") == "Raw":
             item_group = frappe.db.get_value("Item", source_doc.item_code, "item_group")
@@ -88,7 +132,8 @@ def make_purchase_invoice(source_name, target_doc=None, args=None):
                 "field_map": {
                     "name": "purchase_receipt_item",
                     "parent": "purchase_receipt",
-                    "received_qty": "qty"
+                    "received_qty": "qty",
+                  
                 },
                 "postprocess": update_item,
               
