@@ -44,7 +44,8 @@ doctype_js = {
     "BOM":"public/js/bom.js"
     }
 doctype_list_js = {"Material Request" : "public/js/material_request_list.js",
-                   "Request for Quotation" : "public/js/request_for_quotation_list.js"}
+                   "Request for Quotation" : "public/js/request_for_quotation_list.js",
+                   "Supplier Quotation" : "public/js/supplier_quotation_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
 
@@ -145,6 +146,10 @@ doc_events = {
         "on_cancel":"kinjal_organics.public.py.purchase_invoice.cancel_purchase_invoice",
         "after_insert" :"kinjal_organics.public.py.purchase_invoice.generate_journal_entry",
     },
+    "Purchase Order":{
+        "on_submit":"kinjal_organics.public.py.purchase_order_supplier_status.update_status",
+        "on_cancel":"kinjal_organics.public.py.purchase_order_supplier_status.cancel_update_status",
+    },
    
     "Delivery Note":{
         "on_submit":"kinjal_organics.public.py.delivery_note.update_delivery_note",
@@ -156,7 +161,10 @@ doc_events = {
     "Supplier Quotation":{
         "on_submit":"kinjal_organics.public.py.supplier_quotation.update_status",
         "on_cancel":"kinjal_organics.public.py.supplier_quotation.cancel_update_status",
-    }
+    },
+#    Payment Entry":{
+#         "onload":"kinjal_organics.public.py.payment_entry.onload_payment_entry"
+#     } "
 }
 # doc_events = {
 # 	"*": {
@@ -294,6 +302,15 @@ fixtures = [
             ]
         ]
     ]},
+        {
+            "dt":"Property Setter","filters":[
+             [
+            "module","in",[
+               "Kinjal Organics"
+            ],
+        ]
+            ]
+        }
      
 ]
 

@@ -119,6 +119,31 @@ frappe.ui.form.on('Purchase Invoice', {
 
 
         }, __("Get Item From"));
+        frm.add_custom_button(__('Kasar Voucher'), function () {
+            var journal_entry = frappe.model.get_new_doc('Journal Entry');
+            journal_entry.voucher_type = "Journal Entry";
+            journal_entry.company = frm.doc.company;
+            journal_entry.posting_date = frm.doc.posting_date;
+            var row1 = frappe.model.add_child(journal_entry, "Journal Entry Account", "accounts");
+            row1.account = "KASAR VATAV - KOPL",
+            row1.credit_in_account_currency = frm.doc.outstanding_amount,
+            row1.debit_in_account_currency = 0.0
+
+            var row2 = frappe.model.add_child(journal_entry, "Journal Entry Account", "accounts");    
+            row2.account= frm.doc.credit_to,
+            row2.party_type= "Supplier",
+            row2.party= frm.doc.supplier, // change this to match your party
+            row2.debit_in_account_currency= frm.doc.outstanding_amount,
+            row2.credit_in_account_currency= 0.0,
+            row2.reference_type= "Purchase Invoice",
+            row2.reference_name= frm.doc.name // adjust dynamically if needed
+          
+            
+
+            frappe.set_route('Form',"Journal Entry",journal_entry.name);
+
+
+        }, __("Create"));
     }
 })
 
@@ -180,3 +205,15 @@ frappe.ui.form.on("Purchase Invoice", {
 
 
 
+// frappe.ui.form.on("Purchase Invoice",{
+//     on_submit: function(frm) {
+//         if(frm.doc.custom_is_defective){
+//             if(!frm.doc.custom_journal_entry){
+//                frappe.throw({
+//                     title: __("Mandatory"),
+//                     message: __("Please Create Journal Entry for Defective Items")
+//                 });
+//             }
+//         }
+//     }
+// })

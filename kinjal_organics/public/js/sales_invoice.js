@@ -51,13 +51,13 @@ frappe.ui.form.on("Sales Invoice", {
                 }
             });
         });
-        //  setTimeout(() => {
+         setTimeout(() => {
          
-        //     frm.remove_custom_button('Sales Order', 'Get Items From');
-        //     frm.remove_custom_button('Quotation', 'Get Items From');
-        //     frm.remove_custom_button('Delivery Note', 'Get Items From');
+            frm.remove_custom_button('Sales Order', 'Get Items From');
+            frm.remove_custom_button('Quotation', 'Get Items From');
+            frm.remove_custom_button('Delivery Note', 'Get Items From');
           
-        // }, 100);
+        }, 100);
        
         // Add custom "Purchase Order" button under "Get Item From"
         frm.add_custom_button(__('Delivery Note'), function () {

@@ -517,13 +517,14 @@ $(function () {
 				"company": frappe.query_report.get_filter_value("company"),
 			},
 			callback: function (r) {
-				if (r.message.success) {
-					frappe.msgprint(r.message.success.join('<br>'));
-					frappe.msgprint(r.message.error.join('<br>'));
-				}
-				else{
-					frappe.msgprint(r.message.error.join('<br>'));
-				}
+				console.log(r);
+				// if (r.message.success) {
+				// 	frappe.msgprint(r.message.success.join('<br>'));
+				// 	frappe.msgprint(r.message.error.join('<br>'));
+				// }
+				// else{
+				// 	frappe.msgprint(r.message.error.join('<br>'));
+				// }
 			}
 		});
 	}, __("Action"));

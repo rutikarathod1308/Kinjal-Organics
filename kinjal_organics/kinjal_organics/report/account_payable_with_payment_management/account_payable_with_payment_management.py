@@ -1,9 +1,6 @@
 # Copyright (c) 2025, Sanskar Technolab Private Limited and contributors
 # For license information, please see license.txt
 
-
-
-
 from collections import OrderedDict
 
 import frappe
@@ -17,9 +14,6 @@ from erpnext.accounts.doctype.accounting_dimension.accounting_dimension import (
 	get_dimension_with_children,
 )
 from erpnext.accounts.utils import get_currency_precision
-
-
-
 
 def execute(filters=None):
 	args = {
@@ -45,6 +39,7 @@ class ReceivablePayableReport:
 		self.party_naming_by = frappe.db.get_value(args.get("naming_by")[0], None, args.get("naming_by")[1])
 		self.get_columns()
 		self.get_data()
+
 		self.get_chart_data()
 		return self.columns, self.data, None, self.chart, None, self.skip_total_row
 
@@ -74,12 +69,11 @@ class ReceivablePayableReport:
 				self.skip_total_row = 1
 
 	def get_data(self):
+		# Step 1: Load all required data
 		self.get_ple_entries()
 		self.get_sales_invoices_or_customers_based_on_sales_person()
 		self.voucher_balance = OrderedDict()
-		self.init_voucher_balance()  # invoiced, paid, credit_note, outstanding
-
-		# Build delivery note map against all sales invoices
+		self.init_voucher_balance()
 		self.build_delivery_note_map()
 
 		# Get invoice details like bill_no, due_date etc for all invoices
@@ -96,6 +90,7 @@ class ReceivablePayableReport:
 
 		self.data = []
 
+		# Step 2: Filter out entries with future due dates
 		for ple in self.ple_entries:
 			self.update_voucher_balance(ple)
 
@@ -126,6 +121,7 @@ class ReceivablePayableReport:
 			# get the balance object for voucher_type
 
 			if self.filters.get("ignore_accounts"):
+				
 				key = (ple.voucher_type, ple.voucher_no, ple.party)
 			else:
 				key = (ple.account, ple.voucher_type, ple.voucher_no, ple.party)
@@ -137,6 +133,7 @@ class ReceivablePayableReport:
 				self.voucher_balance[key].cost_center = ple.cost_center
 
 			self.get_invoices(ple)
+			
 
 			if self.filters.get("group_by_party"):
 				self.init_subtotal_row(ple.party)
@@ -226,6 +223,9 @@ class ReceivablePayableReport:
 		return row
 
 	def update_voucher_balance(self, ple):
+		if self.filters.ageing_based_on == "Due Date" and ple.due_date and ple.due_date > self.filters.report_date:
+			# frappe.msgprint(f"{self.get_voucher_balance(ple)}. ")	
+			row = self.get_voucher_balance(ple)
 		# get the row where this balance needs to be updated
 		# if its a payment, it will return the linked invoice or will be considered as advance
 		row = self.get_voucher_balance(ple)
@@ -260,7 +260,8 @@ class ReceivablePayableReport:
 			else:
 				row.paid -= amount
 				row.paid_in_account_currency -= amount_in_account_currency
-
+        
+		
 	def update_sub_total_row(self, row, party):
 		total_row = self.total_row_map.get(party)
 
@@ -278,6 +279,7 @@ class ReceivablePayableReport:
 			self.update_sub_total_row(sub_total_row, "Total")
 
 	def build_data(self):
+		
 		# set outstanding for all the accumulated balances
 		# as we can use this to filter out invoices without outstanding
 		for _key, row in self.voucher_balance.items():
@@ -426,7 +428,7 @@ class ReceivablePayableReport:
 					self.invoice_details.setdefault(d.parent, {}).setdefault("sales_team", []).append(
 						d.sales_person
 					)
-
+		
 		if self.account_type == "Payable":
 			for pi in frappe.db.sql(
 				"""
@@ -438,7 +440,7 @@ class ReceivablePayableReport:
 				as_dict=1,
 			):
 				self.invoice_details.setdefault(pi.name, pi)
-		
+
 		# Invoices booked via Journal Entries
 		journal_entries = frappe.db.sql(
 			"""
@@ -605,7 +607,6 @@ class ReceivablePayableReport:
 		).run(as_dict=True)
 
 	def get_future_payments_from_journal_entry(self):
-		
 		je = frappe.qb.DocType("Journal Entry")
 		jea = frappe.qb.DocType("Journal Entry Account")
 		query = (
@@ -710,11 +711,11 @@ class ReceivablePayableReport:
 	def set_ageing(self, row):
 		if self.filters.ageing_based_on == "Due Date":
 	
-			entry_date = row.due_date
+			entry_date = row.due_date or row.posting_date
 		elif self.filters.ageing_based_on == "Supplier Invoice Date":
 			entry_date = row.bill_date
 		else:
-			entry_date = row.posting_date
+			entry_date = row.posting_date 
 
 		self.get_ageing_data(entry_date, row)
 
@@ -768,6 +769,7 @@ class ReceivablePayableReport:
 			)
 		else:
 			self.qb_selection_filter.append(self.ple.posting_date.lte(self.filters.report_date))
+	
 
 		ple = qb.DocType("Payment Ledger Entry")
 		query = (
@@ -1162,7 +1164,6 @@ class ReceivablePayableReport:
 		}
 
 	def get_exchange_rate_revaluations(self):
-     
 		je = qb.DocType("Journal Entry")
 		results = (
 			qb.from_(je)

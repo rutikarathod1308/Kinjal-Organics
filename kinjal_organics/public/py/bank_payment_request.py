@@ -56,7 +56,7 @@ def create_payment_request(selected_rows, company):
                     "payment_request_type": "Outward",
                     "reference_doctype": row.get("voucher_type"),
                     "reference_name": row.get("voucher_no"),
-                    "net_total": get_amount(ref_doc, party),
+                    "net_total": row.get("outstanding"),
                     "transaction_date": nowdate(),
                     "mode_of_payment": "Wire Transfer",
                     "bank_account": bank_account,

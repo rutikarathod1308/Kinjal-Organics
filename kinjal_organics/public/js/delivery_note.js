@@ -173,3 +173,23 @@ frappe.ui.form.on("Delivery Note", {
         }
     }
 });
+
+frappe.ui.form.on("Delivery Note", {
+    on_submit: async function (frm) {
+        for (let row of frm.doc.items || []) {
+            if (row.against_sales_order) {
+                const r = await frappe.call({
+                    method: "frappe.client.get",
+                    args: {
+                        doctype: "Sales Order",
+                        name: row.against_sales_order
+                    }
+                });
+
+                if (r.message && r.message.workflow_state === "Re-Approve") {
+                    frappe.throw(__(" linked Sales Order {0} is in 'Re-Approve'. Please Aprroved Sales Order.", [row.against_sales_order]));
+                }
+            }
+        }
+    }
+});

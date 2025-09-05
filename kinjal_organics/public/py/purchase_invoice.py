@@ -13,6 +13,11 @@ def update_purchase_invoice(doc=None, method=None):
 def cancel_purchase_invoice(doc=None,method=None):
     frappe.enqueue(cancel_pending_qty, queue="long", doc=doc.name)
 
+def defective_item(doc=None, method=None):
+    doc = frappe.get_doc("Purchase Invoice", doc)
+    if doc.custom_is_defective_item :
+        if not doc.journal_entry:
+            frappe.throw(_("Please generate Journal Entry before submitting the Purchase Invoice."))
 def update_pending_qty(doc):
     doc = frappe.get_doc("Purchase Invoice", doc)  # Fetch latest document
     if doc.update_stock :
