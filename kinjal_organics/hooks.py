@@ -136,9 +136,9 @@ override_doctype_class = {
 # Hook on document methods and events
 doc_events = {
     "Purchase Receipt":{
+        # "on_submit":"kinjal_organics.public.py.purchase_receipt.update_purchase_receipt",
         "on_submit":"kinjal_organics.public.py.purchase_receipt.update_purchase_receipt",
-        # "onload":"kinjal_organics.public.py.purchase_receipt.cancel_po_qty_update",
-        "on_cancel":"kinjal_organics.public.py.purchase_receipt.cancel_purchase_receipt"
+        # "on_cancel":"kinjal_organics.public.py.purchase_receipt.cancel_purchase_receipt"
     },
     
     "Purchase Invoice":{

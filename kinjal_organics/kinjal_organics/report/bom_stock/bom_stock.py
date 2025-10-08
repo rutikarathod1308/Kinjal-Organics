@@ -101,6 +101,7 @@ def get_bom_stock(filters):
                 Floor(BIN.actual_qty / (BOM_ITEM.stock_qty * qty / BOM.quantity)).as_("enough_days"),
                 (BIN.actual_qty - Sum(BOM_ITEM.stock_qty * qty / BOM.quantity)).as_("difference_qty"),
                 BIN.ordered_qty.as_("ordered_qty"),
+                Floor(BIN.ordered_qty / ( Sum(BOM_ITEM.stock_qty * qty / BOM.quantity))).as_("future_days_mfg")
             )
             .where((BOM_ITEM.parent == bom) & (BOM_ITEM.parenttype == "BOM"))
             .groupby(BOM_ITEM.item_code)
@@ -141,7 +142,8 @@ def get_bom_stock(filters):
                     'in_stock_qty': item['actual_qty'] or 0,
                     'enough_days': item['enough_days'] or 0,
                     'difference_qty': item['difference_qty'] or 0,
-                    'ordered_qty': item['ordered_qty'] or 0
+                    'ordered_qty': item['ordered_qty'] or 0,
+                    'future_days_mfg': item['future_days_mfg'] or 0
                 }
     
     # Convert dictionary to list for return
