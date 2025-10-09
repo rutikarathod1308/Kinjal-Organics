@@ -1,6 +1,22 @@
 [
  {
   "default_value": null,
+  "doc_type": "Purchase Receipt Item",
+  "docstatus": 0,
+  "doctype": "Property Setter",
+  "doctype_or_field": "DocField",
+  "field_name": "total_weight",
+  "is_system_generated": 0,
+  "modified": "2025-10-09 12:32:37.174899",
+  "module": "Kinjal Organics",
+  "name": "Purchase Receipt Item-total_weight-mandatory_depends_on",
+  "property": "mandatory_depends_on",
+  "property_type": "Small Text",
+  "row_name": null,
+  "value": "eval:doc.item_group ==\"RAW MATERIAL\""
+ },
+ {
+  "default_value": null,
   "doc_type": "Purchase Order",
   "docstatus": 0,
   "doctype": "Property Setter",
@@ -14,22 +30,6 @@
   "property_type": "Check",
   "row_name": null,
   "value": "1"
- },
- {
-  "default_value": null,
-  "doc_type": "Purchase Receipt Item",
-  "docstatus": 0,
-  "doctype": "Property Setter",
-  "doctype_or_field": "DocField",
-  "field_name": "total_weight",
-  "is_system_generated": 0,
-  "modified": "2025-05-26 18:59:15.711491",
-  "module": "Kinjal Organics",
-  "name": "Purchase Receipt Item-total_weight-mandatory_depends_on",
-  "property": "mandatory_depends_on",
-  "property_type": "Small Text",
-  "row_name": null,
-  "value": "eval:doc.item_group ==\"RAW MATERIAL\""
  },
  {
   "default_value": null,

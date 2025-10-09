@@ -1,15 +1,30 @@
 frappe.ui.form.on('Purchase Invoice', {
     refresh: function (frm) {
-        let user_roles = frappe.user_roles; // Gets the roles of the current user
-        // console.log(user_roles); // Use console.log instead of print
-        for(var i = 0; i < user_roles.length; i++) {
-            if(user_roles[i] == "FIFO Advance"){
-                frm.set_df_property('allocate_advances_automatically', 'read_only', 0);
-            }
-            else{
-                frm.set_df_property('allocate_advances_automatically', 'read_only', 1);
-            }
-        }
+        // let user_roles = frappe.user_roles; // Gets the roles of the current user
+        // // console.log(user_roles); // Use console.log instead of print
+        // for(var i = 0; i < user_roles.length; i++) {
+        //     console.log(user_roles[i])
+        //     if(user_roles[i] == "FIFO Advance"){
+        //         frm.set_df_property('allocate_advances_automatically', 'read_only', 0);
+        //     }
+        //     else{
+        //         frm.set_df_property('allocate_advances_automatically', 'read_only', 1);
+        //     }
+        // }
+     
+    frappe.call({
+                method: 'kinjal_organics.public.py.payment_entry.get_selected_fifo_roles',
+                callback: function (r) {
+                    const role_type = r.message;
+                    console.log(role_type)
+                    if (role_type === "FIFO") {
+                        
+                        frm.set_df_property('allocate_advances_automatically', 'read_only', 0);
+                    } 
+
+                    frm.refresh_field('payment_type');
+                }
+            });
         let parent_warehouse_list = [];
         let item_warehouse_map = {}; // To store warehouses per item_code
 
@@ -73,6 +88,8 @@ frappe.ui.form.on('Purchase Invoice', {
             frm.remove_custom_button('Subscription', 'Create');
             
         }, 200);
+       if(frm.doc.docstatus != 1){
+
        
         // Add custom "Purchase Order" button under "Get Item From"
         frm.add_custom_button(__('Purchase Receipt'), function () {
@@ -119,6 +136,7 @@ frappe.ui.form.on('Purchase Invoice', {
 
 
         }, __("Get Item From"));
+    }
         frm.add_custom_button(__('Kasar Voucher'), function () {
             var journal_entry = frappe.model.get_new_doc('Journal Entry');
             journal_entry.voucher_type = "Journal Entry";

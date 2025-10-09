@@ -6,10 +6,10 @@ frappe.ui.form.on('Payment Entry', {
 
         // Call server to get role-based permission
         frappe.call({
-            method: 'kinjal_organics.public.py.payment_entry.get_payment_permission_role',
+            method: 'kinjal_organics.public.py.payment_entry.get_selected_enabled_roles',
             callback: function (r) {
                 const role_type = r.message;
-
+                console.log(role_type)
                 if (role_type === "Pay") {
                       if(frm.is_new()){
                     frm.set_value('payment_type', 'Pay');

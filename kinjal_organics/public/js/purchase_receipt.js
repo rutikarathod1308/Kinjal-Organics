@@ -119,8 +119,8 @@ frappe.ui.form.on("Purchase Receipt", {
     refresh: function(frm) {
         // Hide default buttons
         $("button:contains('Get Items From')").hide();
-
-        // Add custom "Purchase Order" button under "Get Item From"
+        if (frm.doc.docstatus == 0){
+  // Add custom "Purchase Order" button under "Get Item From"
         frm.add_custom_button(__('Purchase Order'), function () {
             if (!frm.doc.supplier) {
                 frappe.throw({
@@ -161,11 +161,14 @@ frappe.ui.form.on("Purchase Receipt", {
             });
 
         }, __("Get Item From"));
+        }
+      
     }
 });
 
 frappe.ui.form.on("Purchase Receipt", {
     validate: async function (frm) {
+       
         for (let row of frm.doc.items || []) {
             if (row.purchase_order) {
                 const r = await frappe.call({
@@ -186,7 +189,7 @@ frappe.ui.form.on("Purchase Receipt", {
 
 
 frappe.ui.form.on("Purchase Receipt", {
-    on_submit: async function (frm) {
+    async on_submit(frm) {
         for (let row of frm.doc.items || []) {
             if (row.purchase_order) {
                 const r = await frappe.call({
@@ -198,9 +201,47 @@ frappe.ui.form.on("Purchase Receipt", {
                 });
 
                 if (r.message && r.message.workflow_state === "Re-Approve") {
-                    frappe.throw(__(" linked Purchase Order {0} is in 'Re-Approve' Please Aprroved Purchase Order.", [row.purchase_order]));
+                    frappe.throw(
+                        __("Linked Purchase Order {0} is in 'Re-Approve'. Please approve the Purchase Order before submitting.", [row.purchase_order])
+                    );
                 }
             }
         }
     }
 });
+
+
+
+
+frappe.ui.form.on("Purchase Receipt Item", {
+    custom_gross_weight: function(frm, cdt, cdn) {
+        calculate_total_weight(frm, cdt, cdn);
+    },
+    custom_tare_weght: function(frm, cdt, cdn) {
+        calculate_total_weight(frm, cdt, cdn);
+    }
+});
+
+function calculate_total_weight(frm, cdt, cdn) {
+    let row = locals[cdt][cdn];
+
+    // Ensure both values are valid numbers
+    let gross = flt(row.custom_gross_weight);
+    let tare = flt(row.custom_tare_weght);
+
+    if (gross > 0 && tare >= 0) {
+        var total_weight = gross - tare;
+        console.log(total_weight)
+        frappe.model.set_value(cdt, cdn, "net_weight", total_weight);
+    } else {
+        frappe.model.set_value(cdt, cdn, "net_weight", 0);
+    }
+}
+
+frappe.ui.form.on("Purchase Receipt Item", {
+    custom_billing_weight: function(frm, cdt, cdn) {
+        let row = locals[cdt][cdn];
+        var shortage = row.net_weight - row.custom_billing_weight
+        frappe.model.set_value(cdt,cdn,"shortage_qty",shortage)
+    }
+})

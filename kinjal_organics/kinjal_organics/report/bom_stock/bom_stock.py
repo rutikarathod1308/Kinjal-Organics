@@ -3,9 +3,9 @@
 
 import frappe
 from frappe import _
-from frappe.query_builder.functions import Floor, Sum
 from frappe.utils import cint
 from pypika.terms import ExistsCriterion
+from pypika.functions import Sum, Floor
 
 
 def execute(filters=None):
@@ -59,19 +59,18 @@ def get_bom_stock(filters):
 
     # Dictionary to track aggregated data by item_code
     item_data = {}
-    
+
     warehouse_details = frappe.db.get_value("Warehouse", filters.get("warehouse"), ["lft", "rgt"], as_dict=1)
 
     BOM = frappe.qb.DocType("BOM")
     BOM_ITEM = frappe.qb.DocType("BOM Explosion Item" if filters.get("show_exploded_view") else "BOM Item")
     BIN = frappe.qb.DocType("Bin")
     WH = frappe.qb.DocType("Warehouse")
-    
+
     for bom, qty in zip(bom_filter, qty_to_produce):
         if cint(qty) <= 0:
             frappe.throw(_("Each Quantity to Produce should be greater than zero."))
 
-        CONDITIONS = ()
         if warehouse_details:
             CONDITIONS = ExistsCriterion(
                 frappe.qb.from_(WH)
@@ -101,38 +100,47 @@ def get_bom_stock(filters):
                 Floor(BIN.actual_qty / (BOM_ITEM.stock_qty * qty / BOM.quantity)).as_("enough_days"),
                 (BIN.actual_qty - Sum(BOM_ITEM.stock_qty * qty / BOM.quantity)).as_("difference_qty"),
                 BIN.ordered_qty.as_("ordered_qty"),
-                Floor(BIN.ordered_qty / ( Sum(BOM_ITEM.stock_qty * qty / BOM.quantity))).as_("future_days_mfg")
+                Floor(BIN.ordered_qty / (Sum(BOM_ITEM.stock_qty * qty / BOM.quantity))).as_("future_days_mfg")
             )
             .where((BOM_ITEM.parent == bom) & (BOM_ITEM.parenttype == "BOM"))
             .groupby(BOM_ITEM.item_code)
         )
 
         bom_items = QUERY.run(as_dict=True)
-        
+
         # Aggregate data by item_code
         for item in bom_items:
             item_code = item['item_code']
-            
+
+            enough_days = item.get('enough_days') or 0
+            future_days_mfg = item.get('future_days_mfg') or 0
+            total_days_mfg = enough_days + future_days_mfg
+
             if item_code in item_data:
                 # Sum up required_qty for existing items
                 item_data[item_code]['required_qty'] += item['required_qty'] or 0
-                
-                # For stock quantities, just keep the latest (they should be the same for a given item and warehouse)
+
+                # Update stock info
                 item_data[item_code]['in_stock_qty'] = item['actual_qty'] or 0
-                
-                # Recalculate enough_days based on new required_qty
+
+                # Recalculate enough_days
                 if item_data[item_code]['required_qty'] > 0:
                     item_data[item_code]['enough_days'] = (item['actual_qty'] or 0) / item_data[item_code]['required_qty']
                 else:
                     item_data[item_code]['enough_days'] = 0
-                    
-                # Recalculate difference_qty
+
+                # Update difference_qty
                 item_data[item_code]['difference_qty'] = (item['actual_qty'] or 0) - item_data[item_code]['required_qty']
-                
-                # Keep the latest ordered_qty
+
+                # Ordered qty and total days
                 item_data[item_code]['ordered_qty'] = item['ordered_qty'] or 0
+                item_data[item_code]['future_days_mfg'] = future_days_mfg
+                item_data[item_code]['total_days_mfg'] = (
+                    item_data[item_code]['enough_days'] + item_data[item_code]['future_days_mfg']
+                )
+
             else:
-                # Initialize the item data
+                # Initialize new item entry
                 item_data[item_code] = {
                     'item': item_code,
                     'description': item['description'],
@@ -140,12 +148,13 @@ def get_bom_stock(filters):
                     'bom_uom': item['stock_uom'],
                     'required_qty': item['required_qty'] or 0,
                     'in_stock_qty': item['actual_qty'] or 0,
-                    'enough_days': item['enough_days'] or 0,
+                    'enough_days': enough_days,
                     'difference_qty': item['difference_qty'] or 0,
                     'ordered_qty': item['ordered_qty'] or 0,
-                    'future_days_mfg': item['future_days_mfg'] or 0
+                    'future_days_mfg': future_days_mfg,
+                    'total_days_mfg': total_days_mfg
                 }
-    
-    # Convert dictionary to list for return
+
+    # Convert dictionary to list
     result = list(item_data.values())
     return result

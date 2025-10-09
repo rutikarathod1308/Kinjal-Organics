@@ -57,7 +57,7 @@ frappe.ui.form.on("Delivery Note", {
             frm.remove_custom_button('Sales Invoice', 'Get Items From');
           
         }, 100);
-       
+        if(frm.doc.docstatus != 1){
         // Add custom "Purchase Order" button under "Get Item From"
         frm.add_custom_button(__('Sales Order'), function () {
             if (!frm.doc.customer) {
@@ -94,6 +94,7 @@ frappe.ui.form.on("Delivery Note", {
 
 
         }, __("Get Item From"));
+    }
     }
 });
 
