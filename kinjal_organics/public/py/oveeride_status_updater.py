@@ -323,59 +323,98 @@ class custom_StatusUpdater(ERPNextStatusUpdater):
 
 	def limits_crossed_error(self, args, item, qty_or_amount):
 		"""Raise exception for limits crossed"""
-		if (
-			self.doctype in ["Sales Invoice", "Delivery Note"]
-			and qty_or_amount == "amount"
-			and self.is_internal_customer
-		):
-			return
+		if self.doctype == "Purchase Receipt" :
+			if (
+				self.doctype in ["Sales Invoice", "Delivery Note"]
+				and qty_or_amount == "amount"
+				and self.is_internal_customer
+			):
+				return
 
-		elif (
-			self.doctype in ["Purchase Invoice", "Purchase Receipt"]
-			and qty_or_amount == "amount"
-			and self.is_internal_supplier
-		):
-			return
+			elif (
+				self.doctype in ["Purchase Invoice", "Purchase Receipt"]
+				and qty_or_amount == "amount"
+				and self.is_internal_supplier
+			):
+				return
 
-		if qty_or_amount == "qty":
-			action_msg = _(
-				'To allow over receipt / delivery, update "Over Receipt/Delivery Allowance" in Stock Settings or the Item.'
-			)
-		else:
-			action_msg = _(
-				'To allow over billing, update "Over Billing Allowance" in Accounts Settings or the Item.'
-			)
-
-		po_items = frappe.get_all(
-			"Purchase Order Item",
-			filters={"parent": item.parent},
-			fields=["item_code", "qty", "received_qty", "idx"]
-		)
-
-		total_receive_qty = sum(flt(i.received_qty) for i in po_items)
-		total_qty = sum(flt(i.qty) for i in po_items)
-
-		# Optional: Debug log to check values
-		frappe.logger().info(f"Total PO Qty: {total_qty}, Total Received Qty: {total_receive_qty}")
-		# frappe.throw(qty_or_amount)
-		# frappe.throw(f"{total_receive_qty},{total_qty}")
-		if total_receive_qty > total_qty:
-			# frappe.throw(f"its code Working{total_receive_qty},{total_qty}")
-			frappe.throw(
-				_(
-					"This document is over limit by {0} {1} for item {4}. Are you making another {3} against the same {2}?"
-				).format(
-					frappe.bold(_(item["target_ref_field"].title())),
-					frappe.bold(item["reduce_by"]),
-					frappe.bold(_(args.get("target_dt"))),
-					frappe.bold(_(self.doctype)),
-					frappe.bold(item.get("item_code")),
+			if qty_or_amount == "qty":
+				action_msg = _(
+					'To allow over receipt / delivery, update "Over Receipt/Delivery Allowance" in Stock Settings or the Item.'
 				)
-				+ "<br><br>"
-				+ action_msg,
-				OverAllowanceError,
-				title=_("Limit Crossed"),
+			else:
+				action_msg = _(
+					'To allow over billing, update "Over Billing Allowance" in Accounts Settings or the Item.'
+				)
+
+			po_items = frappe.get_all(
+				"Purchase Order Item",
+				filters={"parent": item.parent},
+				fields=["item_code", "qty", "received_qty", "idx","receipt_received_qty"]
 			)
+
+			total_receive_qty = sum(flt(i.received_qty) for i in po_items)
+			total_receipt_receive_qty = sum(flt(i.receipt_received_qty) for i in po_items)
+			total_qty = sum(flt(i.qty) for i in po_items)
+			actual_received = total_receipt_receive_qty + flt(item.qty)
+			# Optional: Debug log to check values
+			frappe.logger().info(f"Total PO Qty: {total_qty}, Total Received Qty: {total_receive_qty}")
+			# frappe.throw(qty_or_amount)
+			# frappe.throw(f"{total_receive_qty},{total_qty}")
+			if total_receive_qty > total_qty:
+				# frappe.throw(f"its code Working = {total_qty}")
+				reduce_by_po = total_receive_qty - total_qty
+				frappe.throw(
+                _(
+                    "This document is over limit by {0}. Are you making another {1} against the same {2}?"
+                ).format(
+                    frappe.bold(reduce_by_po),
+                    frappe.bold("Purchase Order"),
+                    frappe.bold("Purchase Receipt")
+                )
+                + "<br><br>",
+                title=_("Limit Crossed"),
+                )   
+			else :
+				"""Raise exception for limits crossed"""
+				if (
+					self.doctype in ["Sales Invoice", "Delivery Note"]
+					and qty_or_amount == "amount"
+					and self.is_internal_customer
+				):
+					return
+
+				elif (
+					self.doctype in ["Purchase Invoice", "Purchase Receipt"]
+					and qty_or_amount == "amount"
+					and self.is_internal_supplier
+				):
+					return
+
+				if qty_or_amount == "qty":
+					action_msg = _(
+						'To allow over receipt / delivery, update "Over Receipt/Delivery Allowance" in Stock Settings or the Item.'
+					)
+				else:
+					action_msg = _(
+						'To allow over billing, update "Over Billing Allowance" in Accounts Settings or the Item.'
+					)
+
+					frappe.throw(
+						_(
+							"This document is over limit by {0} {1} for item {4}. Are you making another {3} against the same {2}?"
+						).format(
+							frappe.bold(_(item["target_ref_field"].title())),
+							frappe.bold(item["reduce_by"]),
+							frappe.bold(_(args.get("target_dt"))),
+							frappe.bold(_(self.doctype)),
+							frappe.bold(item.get("item_code")),
+						)
+						+ "<br><br>"
+						+ action_msg,
+						OverAllowanceError,
+						title=_("Limit Crossed"),
+					)
 
 		
 	def warn_about_bypassing_with_role(self, item, qty_or_amount, role):

@@ -35,9 +35,25 @@ def get_selected_enabled_roles():
 def get_customer_payment_permission(customer):
     return frappe.db.get_value("Customer", customer, "advance_payment") or "None"
 
+
+
 @frappe.whitelist()
 def get_supplier_payment_permission(supplier):
-    return frappe.db.get_value("Supplier", supplier, "allow_advance_payment") or "None"
+    # Fetch multiple fields
+    supplier_data = frappe.db.get_value(
+        "Supplier",
+        supplier,
+        ["allow_advance_payment", "advance_limit"],  # list of fields
+        as_dict=True  # return as dictionary
+    )
+    
+    # Return data (or default if not found)
+    if not supplier_data:
+        supplier_data = {"allow_advance_payment": "None", "advance_limit": 0}
+    
+    return supplier_data
+
+
     
 
 

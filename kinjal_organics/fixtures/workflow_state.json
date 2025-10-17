@@ -39,19 +39,19 @@
   "docstatus": 0,
   "doctype": "Workflow State",
   "icon": "",
-  "modified": "2022-02-26 11:50:35.048234",
-  "name": "Disabled",
+  "modified": "2025-02-12 17:59:39.305429",
+  "name": "Re-Approve",
   "style": "",
-  "workflow_state_name": "Disabled"
+  "workflow_state_name": "Re-Approve"
  },
  {
   "docstatus": 0,
   "doctype": "Workflow State",
   "icon": "",
-  "modified": "2022-03-22 15:02:40.642524",
-  "name": "Checked",
+  "modified": "2022-02-26 11:50:35.048234",
+  "name": "Disabled",
   "style": "",
-  "workflow_state_name": "Checked"
+  "workflow_state_name": "Disabled"
  },
  {
   "docstatus": 0,
@@ -75,6 +75,15 @@
   "docstatus": 0,
   "doctype": "Workflow State",
   "icon": "",
+  "modified": "2022-03-22 15:02:40.642524",
+  "name": "Checked",
+  "style": "",
+  "workflow_state_name": "Checked"
+ },
+ {
+  "docstatus": 0,
+  "doctype": "Workflow State",
+  "icon": "",
   "modified": "2022-02-18 12:38:45.675350",
   "name": "Applied",
   "style": "",
@@ -83,11 +92,11 @@
  {
   "docstatus": 0,
   "doctype": "Workflow State",
-  "icon": "",
-  "modified": "2025-02-12 17:59:39.305429",
-  "name": "Re-Approve",
-  "style": "",
-  "workflow_state_name": "Re-Approve"
+  "icon": "ok-sign",
+  "modified": "2024-07-30 18:01:52.987135",
+  "name": "Approved",
+  "style": "Success",
+  "workflow_state_name": "Approved"
  },
  {
   "docstatus": 0,
@@ -106,14 +115,5 @@
   "name": "Pending",
   "style": "",
   "workflow_state_name": "Pending"
- },
- {
-  "docstatus": 0,
-  "doctype": "Workflow State",
-  "icon": "ok-sign",
-  "modified": "2024-07-30 18:01:52.987135",
-  "name": "Approved",
-  "style": "Success",
-  "workflow_state_name": "Approved"
  }
 ]

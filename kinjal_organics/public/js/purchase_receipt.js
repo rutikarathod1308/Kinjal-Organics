@@ -1,11 +1,9 @@
 frappe.ui.form.on("Purchase Receipt", {
     refresh: function(frm) {
         
-               // Clear the entire 'Create' dropdown menu
-        
         let parent_warehouse_list = [];
         let item_warehouse_map = {}; // To store warehouses per item_code
-
+        
         (frm.doc.items || []).forEach(row => {
             if (!row.item_code) return;
 
@@ -54,16 +52,20 @@ frappe.ui.form.on("Purchase Receipt", {
                 }
             });
         });
+        
     }
 });
 
+
 frappe.ui.form.on("Purchase Receipt Item", {
     item_code: function(frm,cdt,cdn) {
+        
         let row = locals[cdt][cdn];
         let parent_warehouse_list = [];
         let item_warehouse_map = {}; // To store warehouses per item_code
 
-       
+        
+        
             if (!row.item_code) return;
 
             frappe.call({
@@ -111,6 +113,91 @@ frappe.ui.form.on("Purchase Receipt Item", {
                 }
             });
      
+    }
+});
+frappe.ui.form.on("Purchase Receipt Item", {
+    item_code: function(frm,cdt,cdn) {
+        
+        let row = locals[cdt][cdn];
+        if(row.item_group == "RAW MATERIAL" || row.item_group == "By product" || row.item_group == "FINISH GOODS"){
+             frm.fields_dict['items'].grid.grid_rows_by_docname[cdn].toggle_editable('qty', false);
+        }
+        else{
+           frm.fields_dict['items'].grid.grid_rows_by_docname[cdn].toggle_editable('qty', true);
+        }
+    }
+})
+frappe.ui.form.on("Purchase Receipt", {
+    refresh: function(frm) {
+        for (let row of frm.doc.items || []) {
+             if(row.item_group == "RAW MATERIAL" || row.item_group == "By product" || row.item_group == "FINISH GOODS"){
+                console.log("If condition worked")
+                frm.fields_dict['items'].grid.grid_rows_by_docname[row.name].toggle_editable('qty', false);
+             }
+             else{
+                console.log("else condition worked")
+                 frm.fields_dict['items'].grid.grid_rows_by_docname[row.name].toggle_editable('qty', true);
+             }
+        }
+    }
+})
+function set_qty_editable_for_row(frm, row) {
+    if (!row) return;
+
+    // safe access to grid row
+    const grid = frm.fields_dict['items'] && frm.fields_dict['items'].grid;
+    if (!grid) return;
+    const grid_row = grid.grid_rows_by_docname[row.name];
+    if (!grid_row) return;
+
+    const rawGroups = ['Raw Material', 'By Product', 'Finish Goods'];
+    const isRawGroup = (g) => {
+        return rawGroups.some(x => (x || '').toLowerCase() === (g || '').toLowerCase());
+    };
+
+    // If item_group exists on the child row, use it directly
+    if (row.item_group) {
+        grid_row.toggle_editable('qty', !isRawGroup(row.item_group));
+        return;
+    }
+
+    // If item_group is missing but item_code is present, fetch item_group asynchronously
+    if (row.item_code) {
+        frappe.db.get_value('Item', row.item_code, 'item_group').then(r => {
+            const ig = (r.message && r.message.item_group) || '';
+            // set the child row's item_group (so subsequent checks are fast)
+            frappe.model.set_value(row.doctype, row.name, 'item_group', ig);
+            const editable = !isRawGroup(ig);
+            const grid_row_now = frm.fields_dict['items'].grid.grid_rows_by_docname[row.name];
+            if (grid_row_now) grid_row_now.toggle_editable('qty', editable);
+        });
+        return;
+    }
+
+    // default: editable
+    grid_row.toggle_editable('qty', true);
+}
+
+// child table events
+frappe.ui.form.on('Purchase Receipt Item', {
+    form_render: function(frm, cdt, cdn) {
+        set_qty_editable_for_row(frm, locals[cdt][cdn]);
+    },
+    item_code: function(frm, cdt, cdn) {
+        // when item_code changes, recalc for this row
+        set_qty_editable_for_row(frm, locals[cdt][cdn]);
+    }
+});
+
+// parent form events
+frappe.ui.form.on('Purchase Receipt', {
+    refresh: function(frm) {
+        // let grid rows render first
+        setTimeout(() => {
+            for (let row of frm.doc.items || []) {
+                set_qty_editable_for_row(frm, row);
+            }
+        }, 0);
     }
 });
 
@@ -162,9 +249,11 @@ frappe.ui.form.on("Purchase Receipt", {
 
         }, __("Get Item From"));
         }
-      
+  
     }
 });
+
+
 
 frappe.ui.form.on("Purchase Receipt", {
     validate: async function (frm) {
@@ -187,28 +276,6 @@ frappe.ui.form.on("Purchase Receipt", {
     }
 });
 
-
-frappe.ui.form.on("Purchase Receipt", {
-    async on_submit(frm) {
-        for (let row of frm.doc.items || []) {
-            if (row.purchase_order) {
-                const r = await frappe.call({
-                    method: "frappe.client.get",
-                    args: {
-                        doctype: "Purchase Order",
-                        name: row.purchase_order
-                    }
-                });
-
-                if (r.message && r.message.workflow_state === "Re-Approve") {
-                    frappe.throw(
-                        __("Linked Purchase Order {0} is in 'Re-Approve'. Please approve the Purchase Order before submitting.", [row.purchase_order])
-                    );
-                }
-            }
-        }
-    }
-});
 
 
 
@@ -243,5 +310,38 @@ frappe.ui.form.on("Purchase Receipt Item", {
         let row = locals[cdt][cdn];
         var shortage = row.net_weight - row.custom_billing_weight
         frappe.model.set_value(cdt,cdn,"shortage_qty",shortage)
+        const valid_groups = ["RAW MATERIAL", "By product", "FINISH GOODS"];
+
+        // Check if item_group matches any of the valid ones
+        if (valid_groups.includes(row.item_group)) {
+            const net = flt(row.net_weight);
+            const bill = flt(row.custom_billing_weight);
+
+            if (net && bill) {
+                const lower_value = Math.min(net, bill);
+                frappe.model.set_value(cdt, cdn, "qty", lower_value);
+            }
+        }
     }
 })
+
+frappe.ui.form.on("Purchase Receipt Item", {
+    net_weight: function(frm, cdt, cdn) {
+        let row = locals[cdt][cdn];
+      
+        const valid_groups = ["RAW MATERIAL", "By product", "FINISH GOODS"];
+
+        // Check if item_group matches any of the valid ones
+        if (valid_groups.includes(row.item_group)) {
+            const net = flt(row.net_weight);
+            const bill = flt(row.custom_billing_weight);
+
+            if (net && bill) {
+                const lower_value = Math.min(net, bill);
+                frappe.model.set_value(cdt, cdn, "qty", lower_value);
+            }
+        }
+    }
+})
+
+
