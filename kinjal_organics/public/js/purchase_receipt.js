@@ -113,34 +113,17 @@ frappe.ui.form.on("Purchase Receipt Item", {
                 }
             });
      
-    }
-});
-frappe.ui.form.on("Purchase Receipt Item", {
-    item_code: function(frm,cdt,cdn) {
-        
-        let row = locals[cdt][cdn];
         if(row.item_group == "RAW MATERIAL" || row.item_group == "By product" || row.item_group == "FINISH GOODS"){
              frm.fields_dict['items'].grid.grid_rows_by_docname[cdn].toggle_editable('qty', false);
+             
         }
         else{
            frm.fields_dict['items'].grid.grid_rows_by_docname[cdn].toggle_editable('qty', true);
         }
     }
-})
-frappe.ui.form.on("Purchase Receipt", {
-    refresh: function(frm) {
-        for (let row of frm.doc.items || []) {
-             if(row.item_group == "RAW MATERIAL" || row.item_group == "By product" || row.item_group == "FINISH GOODS"){
-                console.log("If condition worked")
-                frm.fields_dict['items'].grid.grid_rows_by_docname[row.name].toggle_editable('qty', false);
-             }
-             else{
-                console.log("else condition worked")
-                 frm.fields_dict['items'].grid.grid_rows_by_docname[row.name].toggle_editable('qty', true);
-             }
-        }
-    }
-})
+});
+
+
 function set_qty_editable_for_row(frm, row) {
     if (!row) return;
 
@@ -158,6 +141,7 @@ function set_qty_editable_for_row(frm, row) {
     // If item_group exists on the child row, use it directly
     if (row.item_group) {
         grid_row.toggle_editable('qty', !isRawGroup(row.item_group));
+        
         return;
     }
 
@@ -179,27 +163,37 @@ function set_qty_editable_for_row(frm, row) {
 }
 
 // child table events
-frappe.ui.form.on('Purchase Receipt Item', {
-    form_render: function(frm, cdt, cdn) {
-        set_qty_editable_for_row(frm, locals[cdt][cdn]);
-    },
-    item_code: function(frm, cdt, cdn) {
-        // when item_code changes, recalc for this row
-        set_qty_editable_for_row(frm, locals[cdt][cdn]);
-    }
-});
+// frappe.ui.form.on('Purchase Receipt Item', {
+//     form_render: function(frm, cdt, cdn) {
+//         let row = locals[cdt][cdn]
+//         set_qty_editable_for_row(frm, locals[cdt][cdn]);
+//         // console.log(row.item_group)
+//         //   frm.fields_dict["items"].grid.update_docfield_property("qty", "read_only", 1);
+        
+//     },
+//     item_code: function(frm, cdt, cdn) {
+//         // when item_code changes, recalc for this row
+//          let row = locals[cdt][cdn]
+//         set_qty_editable_for_row(frm, locals[cdt][cdn]);
+       
+//     }
+// });
 
-// parent form events
-frappe.ui.form.on('Purchase Receipt', {
-    refresh: function(frm) {
-        // let grid rows render first
-        setTimeout(() => {
-            for (let row of frm.doc.items || []) {
-                set_qty_editable_for_row(frm, row);
-            }
-        }, 0);
+
+
+function set_qty_editable_for_row(frm, row) {
+    if (!row) return;
+
+    const grid_row = frm.fields_dict["items"].grid.grid_rows_by_docname[row.name];
+    if (!grid_row) return;
+
+    if (["RAW MATERIAL", "By product", "FINISH GOODS"].includes(row.item_group)) {
+        grid_row.toggle_editable("qty", false);
+    } else {
+        grid_row.toggle_editable("qty", true);
     }
-});
+}
+
 
 
 frappe.ui.form.on("Purchase Receipt", {
