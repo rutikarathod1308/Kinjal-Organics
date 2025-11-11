@@ -1,16 +1,6 @@
 frappe.ui.form.on('Purchase Invoice', {
     refresh: function (frm) {
-        // let user_roles = frappe.user_roles; // Gets the roles of the current user
-        // // console.log(user_roles); // Use console.log instead of print
-        // for(var i = 0; i < user_roles.length; i++) {
-        //     console.log(user_roles[i])
-        //     if(user_roles[i] == "FIFO Advance"){
-        //         frm.set_df_property('allocate_advances_automatically', 'read_only', 0);
-        //     }
-        //     else{
-        //         frm.set_df_property('allocate_advances_automatically', 'read_only', 1);
-        //     }
-        // }
+      
      
     frappe.call({
                 method: 'kinjal_organics.public.py.payment_entry.get_selected_fifo_roles',
@@ -206,22 +196,26 @@ frappe.ui.form.on("Purchase Invoice", {
           
       
     },
-    onload:function(frm){
-         let $wrapper = frm.fields_dict["address_display"]?.$wrapper;
-
-            if ($wrapper) {
-                let original_html = $wrapper.html();
-
-                // Use regex to remove GSTIN line (including <br> before and after)
-                let cleaned_html = original_html.replace(/<br>GSTIN:.*?(<br>|$)/i, '<br>');
-
-                // Update the wrapper with cleaned HTML
-                $wrapper.html(cleaned_html);
-            }
+    supplier: function(frm) {
+        remove_gstin_from_address(frm);
+    },
+    onload: function(frm) {
+        remove_gstin_from_address(frm);
     }
 });
 
+function remove_gstin_from_address(frm) {
+    let $wrapper = frm.fields_dict["address_display"]?.$wrapper;
 
+    if ($wrapper && $wrapper.length) {
+        let html = $wrapper.html() || "";
+
+        // Remove the line starting with GSTIN (case-insensitive, tolerates <br>, \n, or spaces)
+        let cleaned_html = html.replace(/(<br>\s*)?GSTIN:\s*[\w\d]+(<br>\s*)?/i, '');
+
+        $wrapper.html(cleaned_html);
+    }
+}
 
 // frappe.ui.form.on("Purchase Invoice",{
 //     on_submit: function(frm) {
