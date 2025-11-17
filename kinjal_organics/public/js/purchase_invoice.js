@@ -196,26 +196,87 @@ frappe.ui.form.on("Purchase Invoice", {
           
       
     },
-    supplier: function(frm) {
-        remove_gstin_from_address(frm);
+   
+});
+
+
+frappe.ui.form.on("Purchase Invoice", {
+    onload(frm) {
+        frappe.after_ajax(() => {
+            setup_gstin_observer(frm);
+        });
     },
-    onload: function(frm) {
-        remove_gstin_from_address(frm);
+    refresh(frm) {
+        frappe.after_ajax(() => {
+            setup_gstin_observer(frm);
+        });
+    },
+     supplier(frm) {
+        frappe.after_ajax(() => {
+            setup_gstin_observer(frm);
+        });
     }
 });
 
-function remove_gstin_from_address(frm) {
-    let $wrapper = frm.fields_dict["address_display"]?.$wrapper;
+function setup_gstin_observer(frm) {
+    let wrapper = frm.fields_dict["address_display"]?.$wrapper;
+    if (!wrapper || !wrapper.length) return;
 
-    if ($wrapper && $wrapper.length) {
-        let html = $wrapper.html() || "";
-
-        // Remove the line starting with GSTIN (case-insensitive, tolerates <br>, \n, or spaces)
-        let cleaned_html = html.replace(/(<br>\s*)?GSTIN:\s*[\w\d]+(<br>\s*)?/i, '');
-
-        $wrapper.html(cleaned_html);
+    // Disconnect old observer
+    if (frm._gstin_observer) {
+        frm._gstin_observer.disconnect();
     }
+
+    // New observer
+    const observer = new MutationObserver(() => {
+        remove_gstin_text(wrapper);
+    });
+
+    observer.observe(wrapper[0], {
+        childList: true,
+        subtree: true,
+        characterData: true,
+    });
+
+    frm._gstin_observer = observer;
+
+    // Run once immediately
+    remove_gstin_text(wrapper);
 }
+
+function remove_gstin_text(wrapper) {
+    wrapper.find('*').contents().filter(function () {
+        return this.nodeType === 3 && this.nodeValue.includes("GSTIN");
+    }).each(function () {
+        this.nodeValue = this.nodeValue.replace(/GSTIN:\s*[A-Z0-9]+/i, "");
+    });
+}
+
+
+
+
+
+
+frappe.ui.form.on('Purchase Invoice', {
+    supplier(frm) {
+        frappe.after_ajax(() => {
+           
+                // Mask GSTIN anywhere inside address_display
+                let wrapper = $("[data-fieldname='address_display']");
+                
+                wrapper.find("*:contains('GSTIN')").each(function () {
+                    let html = $(this).html();
+
+                    // Remove GSTIN number, keep label
+                    html = html.replace(/GSTIN:\s*[A-Z0-9]+/i, "GSTIN:");
+                    
+                    $(this).html(html);
+                });
+            // Small delay to let HTML fully render
+        });
+    }
+});
+
 
 // frappe.ui.form.on("Purchase Invoice",{
 //     on_submit: function(frm) {
