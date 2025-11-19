@@ -97,62 +97,82 @@ def get_bom_stock(filters):
                 BOM_ITEM.stock_uom,
                 Sum(BOM_ITEM.stock_qty * qty / BOM.quantity).as_("required_qty"),
                 BIN.actual_qty.as_("actual_qty"),
-                Floor(BIN.actual_qty / (BOM_ITEM.stock_qty * qty / BOM.quantity)).as_("enough_days"),
+                Floor(
+                    BIN.actual_qty / (BOM_ITEM.stock_qty * qty / BOM.quantity)
+                ).as_("enough_days"),
                 (BIN.actual_qty - Sum(BOM_ITEM.stock_qty * qty / BOM.quantity)).as_("difference_qty"),
                 BIN.ordered_qty.as_("ordered_qty"),
-                Floor(BIN.ordered_qty / (Sum(BOM_ITEM.stock_qty * qty / BOM.quantity))).as_("future_days_mfg")
+                Floor(
+                    BIN.ordered_qty / Sum(BOM_ITEM.stock_qty * qty / BOM.quantity)
+                ).as_("future_days_mfg")
             )
             .where((BOM_ITEM.parent == bom) & (BOM_ITEM.parenttype == "BOM"))
             .groupby(BOM_ITEM.item_code)
         )
-
         bom_items = QUERY.run(as_dict=True)
 
         # Aggregate data by item_code
         for item in bom_items:
             item_code = item['item_code']
 
-            enough_days = item.get('enough_days') or 0
-            future_days_mfg = item.get('future_days_mfg') or 0
-            total_days_mfg = enough_days + future_days_mfg
+            # Values coming from the query (per-BOM)
+            req_qty = item.get('required_qty') or 0
+            actual_qty = item.get('actual_qty') or 0
+            ordered_qty = item.get('ordered_qty') or 0
 
             if item_code in item_data:
-                # Sum up required_qty for existing items
-                item_data[item_code]['required_qty'] += item['required_qty'] or 0
+                # Sum up required_qty and ordered_qty for existing items
+                item_data[item_code]['required_qty'] += req_qty
+                # item_data[item_code]['ordered_qty'] += ordered_qty
 
-                # Update stock info
-                item_data[item_code]['in_stock_qty'] = item['actual_qty'] or 0
+                # Keep in_stock_qty as the reported actual_qty (should be same across BOMs)
+                item_data[item_code]['in_stock_qty'] = actual_qty
 
-                # Recalculate enough_days
-                if item_data[item_code]['required_qty'] > 0:
-                    item_data[item_code]['enough_days'] = (item['actual_qty'] or 0) / item_data[item_code]['required_qty']
+                # Recalculate enough_days and future_days_mfg using aggregated totals
+                total_required = item_data[item_code]['required_qty']
+                total_ordered = item_data[item_code]['ordered_qty']
+                total_actual = item_data[item_code]['in_stock_qty']
+
+                if total_required > 0:
+                    item_data[item_code]['enough_days'] = total_actual / total_required
+                    item_data[item_code]['future_days_mfg'] = (total_ordered / total_required) if total_required else 0
                 else:
                     item_data[item_code]['enough_days'] = 0
+                    item_data[item_code]['future_days_mfg'] = 0
 
-                # Update difference_qty
-                item_data[item_code]['difference_qty'] = (item['actual_qty'] or 0) - item_data[item_code]['required_qty']
+                # Update difference_qty based on aggregated required_qty
+                item_data[item_code]['difference_qty'] = total_actual - total_required
 
-                # Ordered qty and total days
-                item_data[item_code]['ordered_qty'] = item['ordered_qty'] or 0
-                item_data[item_code]['future_days_mfg'] = future_days_mfg
+                # Total days is recomputed
                 item_data[item_code]['total_days_mfg'] = (
                     item_data[item_code]['enough_days'] + item_data[item_code]['future_days_mfg']
                 )
 
             else:
-                # Initialize new item entry
+                # Initialize new item entry using aggregated-required from this query-row
+                total_required = req_qty
+                total_ordered = ordered_qty
+                total_actual = actual_qty
+
+                if total_required > 0:
+                    enough_days = total_actual / total_required
+                    future_days_mfg = (total_ordered / total_required) if total_required else 0
+                else:
+                    enough_days = 0
+                    future_days_mfg = 0
+
                 item_data[item_code] = {
                     'item': item_code,
-                    'description': item['description'],
-                    'bom_qty': item['stock_qty'],
-                    'bom_uom': item['stock_uom'],
-                    'required_qty': item['required_qty'] or 0,
-                    'in_stock_qty': item['actual_qty'] or 0,
+                    'description': item.get('description'),
+                    'bom_qty': item.get('stock_qty'),
+                    'bom_uom': item.get('stock_uom'),
+                    'required_qty': total_required,
+                    'in_stock_qty': total_actual,
                     'enough_days': enough_days,
-                    'difference_qty': item['difference_qty'] or 0,
-                    'ordered_qty': item['ordered_qty'] or 0,
+                    'difference_qty': (total_actual - total_required),
+                    'ordered_qty': total_ordered,
                     'future_days_mfg': future_days_mfg,
-                    'total_days_mfg': total_days_mfg
+                    'total_days_mfg': (enough_days + future_days_mfg)
                 }
 
     # Convert dictionary to list

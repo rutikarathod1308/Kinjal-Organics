@@ -257,25 +257,6 @@ function remove_gstin_text(wrapper) {
 
 
 
-frappe.ui.form.on('Purchase Invoice', {
-    supplier(frm) {
-        frappe.after_ajax(() => {
-           
-                // Mask GSTIN anywhere inside address_display
-                let wrapper = $("[data-fieldname='address_display']");
-                
-                wrapper.find("*:contains('GSTIN')").each(function () {
-                    let html = $(this).html();
-
-                    // Remove GSTIN number, keep label
-                    html = html.replace(/GSTIN:\s*[A-Z0-9]+/i, "GSTIN:");
-                    
-                    $(this).html(html);
-                });
-            // Small delay to let HTML fully render
-        });
-    }
-});
 
 
 // frappe.ui.form.on("Purchase Invoice",{
