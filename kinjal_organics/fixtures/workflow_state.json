@@ -48,15 +48,6 @@
   "docstatus": 0,
   "doctype": "Workflow State",
   "icon": "",
-  "modified": "2022-03-22 15:02:40.642524",
-  "name": "Checked",
-  "style": "",
-  "workflow_state_name": "Checked"
- },
- {
-  "docstatus": 0,
-  "doctype": "Workflow State",
-  "icon": "",
   "modified": "2022-02-18 12:40:57.156657",
   "name": "Cancelled",
   "style": "",
@@ -70,6 +61,15 @@
   "name": "Rejected",
   "style": "Danger",
   "workflow_state_name": "Rejected"
+ },
+ {
+  "docstatus": 0,
+  "doctype": "Workflow State",
+  "icon": "",
+  "modified": "2022-03-22 15:02:40.642524",
+  "name": "Checked",
+  "style": "",
+  "workflow_state_name": "Checked"
  },
  {
   "docstatus": 0,
