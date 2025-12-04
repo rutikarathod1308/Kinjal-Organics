@@ -1,17 +1,17 @@
 frappe.ui.form.on("BOM", {
     refresh(frm) {
+
         frm.add_custom_button(__("Update BOM"), function () {
 
             let child_items = frm.doc.items || [];
-
             if (!child_items.length) {
                 frappe.msgprint("No items to update.");
                 return;
             }
 
-            // Prepare editable data
+            // Prepare data for dialog table
             let editable_data = child_items.map(row => ({
-                original_item_code: row.item_code,   // needed for delete + update tracking
+                original_item_code: row.item_code,
                 item_code: row.item_code,
                 item_name: row.item_name,
                 description: row.description,
@@ -23,123 +23,87 @@ frappe.ui.form.on("BOM", {
             let d = new frappe.ui.Dialog({
                 title: "Update BOM Items",
                 fields: [
-                {
-                    fieldname: "items_table",
-                    label: "Items",
-                    fieldtype: "Table",
-                    cannot_add_rows: false,
-                    in_place_edit: false,     // <<< IMPORTANT (shows pencil icon)
-                    data: editable_data,
+                    {
+                        fieldname: "items_table",
+                        label: "Items",
+                        fieldtype: "Table",
+                        cannot_add_rows: false,
+                        in_place_edit: false,
+                        data: editable_data,
 
-                    fields: [
-                        {
-                            fieldname: "item_code",
-                            label: "Item Code",
-                            fieldtype: "Link",
-                            options: "Item",
-                            reqd: 1,
-                            in_list_view: true,
-                            onchange: function () { 
-                                const item_value = this.get_value(); 
-                                if (!item_value) return;
-
-                                // Fetch item details and rate in a promise chain
-                                frappe.db.get_value("Item", item_value, ["item_name", "description", "stock_uom"])
-                                    .then(r => {
-                                        if (r.message) {
-                                            this.grid_row.doc.item_name = r.message.item_name;
-                                            this.grid_row.doc.description = r.message.description;
-                                            this.grid_row.doc.uom = r.message.stock_uom;
-                                        } else {
-                                            frappe.msgprint(`Item ${item_value} not found.`);
-                                            return;
-                                        }
-
-                                        // Fetch rate (purchase rate for BOM)
-                                        return frappe.db.get_value("Item Price", { item_code: item_value, buying: 1 }, "price_list_rate");
-                                    })
-                                    .then(res => {
-                                        this.grid_row.doc.rate = res.message?.price_list_rate || 0;
-                                        // Refresh the grid after all updates
-                                        this.grid_row.grid.refresh();
-                                    })
-                                    .catch(err => {
-                                        console.error("Error fetching item details:", err);
-                                        frappe.msgprint("Error fetching item details. Please check the item code.");
-                                    });
+                        fields: [
+                            {
+                                fieldname: "item_code",
+                                label: "Item Code",
+                                fieldtype: "Link",
+                                options: "Item",
+                                reqd: 1,
+                                in_list_view: true
+                            },
+                            {
+                                fieldname: "item_name",
+                                label: "Item Name",
+                                fieldtype: "Data",
+                                read_only: 1,
+                                in_list_view: true
+                            },
+                            {
+                                fieldname: "qty",
+                                label: "Qty",
+                                fieldtype: "Float",
+                                reqd: 1,
+                                in_list_view: true
+                            },
+                            {
+                                fieldname: "uom",
+                                label: "UOM",
+                                fieldtype: "Link",
+                                options: "UOM",
+                                reqd: 1,
+                                in_list_view: true
+                            },
+                            {
+                                fieldname: "rate",
+                                label: "Rate",
+                                fieldtype: "Currency",
+                                in_list_view: true
+                            },
+                            {
+                                fieldname: "description",
+                                label: "Description",
+                                fieldtype: "Data",
+                                read_only: 1,
+                                in_list_view: true
                             }
-                        },
-                        {
-                            fieldname: "item_name",
-                            label: "Item Name",
-                            fieldtype: "Data",
-                            read_only: 1,
-                            in_list_view: true
-                        },
-                        {
-                            fieldname: "qty",
-                            label: "Qty",
-                            fieldtype: "Float",
-                            reqd: 1,
-                            in_list_view: true
-                        },
-                        {
-                            fieldname: "uom",
-                            label: "UOM",
-                            fieldtype: "Link",
-                            options: "UOM",
-                            reqd: 1,
-                            in_list_view: true
-                        },
-                        {
-                            fieldname: "rate",
-                            label: "Rate",
-                            fieldtype: "Currency",
-                            in_list_view: true
-                        },
-                        {
-                            fieldname: "description",
-                            label: "Description",
-                            fieldtype: "Data",
-                            read_only: 1,
-                            in_list_view: true
-                        }
-                    ]
-                }
-            ],
+                        ]
+                    }
+                ],
 
                 primary_action_label: "Update",
                 primary_action(values) {
                     let updated_items = values.items_table || [];
 
-                    // -------------------------------------------------------
-                    // 1️⃣ GET FINAL LIST OF ITEM CODES FROM DIALOG
-                    // -------------------------------------------------------
-                    let final_item_codes = updated_items.map(i => i.original_item_code || i.item_code);
+                    let final_item_codes = updated_items.map(i =>
+                        i.original_item_code || i.item_code
+                    );
 
-                    // -------------------------------------------------------
-                    // 2️⃣ REMOVE DELETED ITEMS FROM MAIN ITEMS TABLE
-                    // -------------------------------------------------------
+                    // Remove deleted rows in main items table
                     frm.doc.items = frm.doc.items.filter(row =>
                         final_item_codes.includes(row.item_code)
                     );
 
-                    // -------------------------------------------------------
-                    // 3️⃣ REMOVE DELETED ITEMS FROM EXPLODED TABLE
-                    // -------------------------------------------------------
+                    // Remove deleted rows in exploded items
                     if (frm.doc.exploded_items) {
                         frm.doc.exploded_items = frm.doc.exploded_items.filter(row =>
                             final_item_codes.includes(row.item_code)
                         );
                     }
 
-                    // -------------------------------------------------------
-                    // 4️⃣ UPDATE OR ADD ITEMS
-                    // -------------------------------------------------------
+                    // Update or add items
                     updated_items.forEach(updated => {
                         let original = updated.original_item_code || updated.item_code;
 
-                        // ------- UPDATE ITEMS TABLE -------
+                        // ========== Main BOM Items ==========
                         let existing = frm.doc.items.find(r => r.item_code === original);
 
                         if (existing) {
@@ -148,12 +112,13 @@ frappe.ui.form.on("BOM", {
                             existing.description = updated.description;
                             existing.uom = updated.uom;
                             existing.rate = updated.rate;
-                            existing.base_rate = updated.rate;
                             existing.qty = updated.qty;
                             existing.stock_qty = updated.qty * (existing.conversion_factor || 1);
-                            existing.amount = updated.qty * updated.rate ;
-                            existing.base_amount = updated.qty * updated.rate ;
-                            existing.include_item_in_manufacturing = 1 ;
+                            existing.amount = updated.qty * updated.rate;
+                            existing.base_rate = updated.rate;
+                            existing.base_amount = updated.qty * updated.rate;
+                            existing.include_item_in_manufacturing = 1;
+
                         } else {
                             let child = frm.add_child("items");
                             child.item_code = updated.item_code;
@@ -161,20 +126,18 @@ frappe.ui.form.on("BOM", {
                             child.description = updated.description;
                             child.uom = updated.uom;
                             child.rate = updated.rate;
-                            child.base_rate = updated.rate;
                             child.qty = updated.qty;
                             child.stock_qty = updated.qty;
-                            child.amount = updated.qty * updated.rate ;
-                            child.base_amount = updated.qty * updated.rate ;
-                            existing.include_item_in_manufacturing = 1 ;
+                            child.amount = updated.qty * updated.rate;
+                            child.base_rate = updated.rate;
+                            child.base_amount = updated.qty * updated.rate;
+                            child.include_item_in_manufacturing = 1;
                         }
 
-                        // ------- UPDATE EXPLODED ITEMS -------
+                        // ========== Exploded Items ==========
                         if (!frm.doc.exploded_items) frm.doc.exploded_items = [];
 
-                        let exploded = frm.doc.exploded_items.find(r =>
-                            r.item_code === original
-                        );
+                        let exploded = frm.doc.exploded_items.find(r => r.item_code === original);
 
                         if (exploded) {
                             exploded.item_code = updated.item_code;
@@ -183,9 +146,10 @@ frappe.ui.form.on("BOM", {
                             exploded.uom = updated.uom;
                             exploded.rate = updated.rate;
                             exploded.stock_qty = updated.qty;
-                            exploded.qty_consumed_per_unit = updated.qty / frm.doc.qty;
-                            exploded.amount = updated.qty * updated.rate ; 
-                            exploded.include_item_in_manufacturing = 1 ;
+                            exploded.qty_consumed_per_unit = updated.qty / (frm.doc.qty || 1);
+                            exploded.amount = updated.qty * updated.rate;
+                            exploded.include_item_in_manufacturing = 1;
+
                         } else {
                             let ex = frm.add_child("exploded_items");
                             ex.item_code = updated.item_code;
@@ -194,9 +158,9 @@ frappe.ui.form.on("BOM", {
                             ex.uom = updated.uom;
                             ex.rate = updated.rate;
                             ex.stock_qty = updated.qty;
-                            ex.qty_consumed_per_unit = updated.qty / frm.doc.qty;
-                            ex.amount = updated.qty * updated.rate ;   
-                            ex.include_item_in_manufacturing = 1 ;
+                            ex.qty_consumed_per_unit = updated.qty / (frm.doc.qty || 1);
+                            ex.amount = updated.qty * updated.rate;
+                            ex.include_item_in_manufacturing = 1;
                         }
                     });
 
@@ -204,7 +168,7 @@ frappe.ui.form.on("BOM", {
                     frm.refresh_field("exploded_items");
 
                     frm.save('Update').then(() => {
-                        frappe.msgprint("BOM items & exploded items updated successfully.");
+                        frappe.msgprint("BOM items updated successfully.");
                     });
 
                     d.hide();
@@ -213,23 +177,116 @@ frappe.ui.form.on("BOM", {
 
             d.show();
 
-            // ⭐ EVENTS: AUTO SAVE + DELETE SYNC + ADD SYNC
+            // ======================================================
+            //   MORE ROBUST ITEM CODE CHANGE HANDLER (works for link pick & typing)
+            // ======================================================
             let grid = d.fields_dict.items_table.grid;
 
-            // ---------------------- DELETE ROW HANDLER ----------------------
+            // Delegated handler: listens for multiple events on the input
+            grid.wrapper.on("change input blur", "input[data-fieldname='item_code']", function (e) {
+                // Attempt immediate read
+                let $input = $(this);
+                let item_code = $input.val();
+                let row_name = $input.closest(".grid-row").attr("data-name");
+
+                // Defensive: try to get row; if not available, we'll wait a short time and retry (link picker race)
+                let get_row_doc = () => {
+                    try {
+                        let gr = grid.get_row(row_name);
+                        return gr && gr.doc ? gr.doc : null;
+                    } catch (err) {
+                        console.warn("grid.get_row error", err);
+                        return null;
+                    }
+                };
+
+                let row_doc = get_row_doc();
+
+                // If row not ready or item_code empty, wait a tick then retry once (handles link dialog race)
+                if ((!row_doc || !row_name) && item_code) {
+                    setTimeout(() => {
+                        row_doc = get_row_doc();
+                        if (!row_doc) {
+                            console.warn("Could not find grid row after retry:", row_name);
+                            return;
+                        }
+                        _fetch_and_set(item_code, row_doc, grid);
+                    }, 150); // small delay to allow link value to settle
+                    return;
+                }
+
+                if (!item_code || !row_doc) {
+                    // nothing to do
+                    return;
+                }
+
+                // Normal path
+                _fetch_and_set(item_code, row_doc, grid);
+            });
+
+            // Helper function that fetches item details and updates the row doc
+            function _fetch_and_set(item_code, row, gridRef) {
+                console.log("Fetching Item:", item_code, "for row:", row.name || row);
+
+                frappe.db.get_value("Item", item_code, ["item_name", "description", "stock_uom"])
+                    .then(r => {
+                        if (!r || !r.message) {
+                            frappe.msgprint("Item not found: " + item_code);
+                            return Promise.reject("Item not found");
+                        }
+
+                        row.item_name = r.message.item_name;
+                        row.description = r.message.description;
+                        row.uom = r.message.stock_uom;
+
+                        // Now fetch price (optional; returns promise)
+                        return frappe.db.get_value("Item Price",
+                            { item_code: item_code, buying: 1 },
+                            "price_list_rate"
+                        );
+                    })
+                    .then(res => {
+                        // If previous step failed with "Item not found", res will be undefined
+                        if (res && res.message) {
+                            row.rate = res.message.price_list_rate || 0;
+                        } else {
+                            // fallback 0 if no price found
+                            row.rate = row.rate || 0;
+                        }
+
+                        // Refresh grid UI
+                        try {
+                            gridRef.refresh();
+                        } catch (err) {
+                            console.warn("grid.refresh failed", err);
+                        }
+                    })
+                    .catch(err => {
+                        // non-blocking: log and show friendly msg only when it's a real fetch error
+                        if (err !== "Item not found") {
+                            console.error("Error fetching item details:", err);
+                            frappe.msgprint("Error fetching item details. See console for details.");
+                        }
+                    });
+            }
+
+            // ======================================================
+            // DELETE ROW SYNC WITH BOM & EXPLODED ITEMS
+            // ======================================================
             grid.wrapper.on("click", ".grid-remove-row", function () {
 
                 let row_name = $(this).closest(".grid-row").attr("data-name");
-                let row = grid.get_row(row_name).doc;
+                let rowObj = grid.get_row(row_name);
+                let row = rowObj ? rowObj.doc : null;
                 if (!row) return;
 
                 let original = row.original_item_code || row.item_code;
 
-                // remove from items
+                // Remove from main items
                 let i = frm.doc.items.findIndex(r => r.item_code === original);
                 if (i !== -1) frm.doc.items.splice(i, 1);
 
-                // remove from exploded
+                // Remove from exploded items
                 if (frm.doc.exploded_items) {
                     let e = frm.doc.exploded_items.findIndex(r => r.item_code === original);
                     if (e !== -1) frm.doc.exploded_items.splice(e, 1);
@@ -237,57 +294,15 @@ frappe.ui.form.on("BOM", {
 
                 frm.refresh_field("items");
                 frm.refresh_field("exploded_items");
-
-                // ⭐ AUTO SAVE AFTER DELETE
                 frm.save('Update');
             });
-
-            // // ---------------------- ADD ROW HANDLER -------------------------
-            // grid.on('row-add', function (row) {
-
-            //     // assign original code if new
-            //     if (!row.doc.original_item_code && row.doc.item_code) {
-            //         row.doc.original_item_code = row.doc.item_code;
-            //     }
-
-            //     // ⭐ auto-save after adding
-            //     frm.save('Update');
-            // });
 
         });
     }
 });
 
 
-// -------------------- FETCH ITEM DETAILS -----------------------
-function fetch_item_details(row, dialog) {
 
-    if (!row.item_code) return;
-
-    frappe.db.get_value("Item", row.item_code,
-        ["item_name", "description", "stock_uom"]
-    ).then(r => {
-        if (r.message) {
-            row.item_name = r.message.item_name;
-            row.description = r.message.description;
-            row.uom = r.message.stock_uom;
-
-            dialog.fields_dict.items_table.grid.refresh();
-        }
-    });
-
-    frappe.call({
-        method: "frappe.client.get_value",
-        args: {
-            doctype: "Bin",
-            filters: { item_code: row.item_code },
-            fieldname: "valuation_rate"
-        }
-    }).then(res => {
-        row.rate = res.message?.valuation_rate || 0;
-        dialog.fields_dict.items_table.grid.refresh();
-    });
-}
 
 frappe.ui.form.on("BOM", {
     onload: function(frm) {

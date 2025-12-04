@@ -43,7 +43,7 @@ def get_supplier_payment_permission(supplier):
     supplier_data = frappe.db.get_value(
         "Supplier",
         supplier,
-        ["allow_advance_payment", "advance_limit"],  # list of fields
+        ["allow_advance_payment", "advance_limit","allow_one_time_advance"],  # list of fields
         as_dict=True  # return as dictionary
     )
     
@@ -85,3 +85,20 @@ def get_selected_fifo_roles():
         return "FIFO"
     else:
         return "None"
+
+def allow_one_time_advance(self, method=None):
+    supplier = self.party
+
+    # Fetch current setting
+    allow = frappe.db.get_value("Supplier", supplier, "allow_one_time_advance")
+
+    # ---- On Submit ----
+    if method == "on_submit":
+        if allow == 1:
+            # Disable so supplier cannot take one-time advance again
+            frappe.db.set_value("Supplier", supplier, "allow_one_time_advance", 0)
+
+    # ---- On Cancel ----
+    if method == "on_cancel":
+        # Re-enable the one-time advance again
+        frappe.db.set_value("Supplier", supplier, "allow_one_time_advance", 1)

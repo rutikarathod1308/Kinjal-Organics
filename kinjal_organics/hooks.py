@@ -28,7 +28,9 @@ app_license = "MIT"
 from erpnext.controllers import status_updater
 from kinjal_organics.public.py.oveeride_status_updater import custom_StatusUpdater
 
+status_updater.StatusUpdater.check_overflow_with_allowance = custom_StatusUpdater.check_overflow_with_allowance
 status_updater.StatusUpdater.limits_crossed_error = custom_StatusUpdater.limits_crossed_error
+status_updater.StatusUpdater.validate_qty = custom_StatusUpdater.validate_qty
 # include js in doctype views
 doctype_js = {
     "Request for Quotation" : "public/js/request_for_quotation.js",
@@ -41,7 +43,8 @@ doctype_js = {
     "Purchase Receipt" : "public/js/purchase_receipt.js",
     "Sales Invoice" : "public/js/sales_invoice.js",
     "Delivery Note" : "public/js/delivery_note.js",
-    "BOM":"public/js/bom.js"
+    "BOM":"public/js/bom.js",
+    "Bank Payment Request":"public/js/bank_payment_request.js"
     }
 doctype_list_js = {"Material Request" : "public/js/material_request_list.js",
                    "Request for Quotation" : "public/js/request_for_quotation_list.js",
@@ -138,7 +141,8 @@ doc_events = {
     "Purchase Receipt":{
         # "on_submit":"kinjal_organics.public.py.purchase_receipt.update_purchase_receipt",
         "on_submit":"kinjal_organics.public.py.purchase_receipt.update_purchase_receipt",
-        "on_cancel":"kinjal_organics.public.py.purchase_receipt.cancel_purchase_receipt"
+        "on_cancel":"kinjal_organics.public.py.purchase_receipt.cancel_purchase_receipt",
+        # "validate":"kinjal_organics.public.py.purchase_receipt.validate_po_receive_on_submit",
     },
     
     "Purchase Invoice":{
@@ -162,9 +166,10 @@ doc_events = {
         "on_submit":"kinjal_organics.public.py.supplier_quotation.update_status",
         "on_cancel":"kinjal_organics.public.py.supplier_quotation.cancel_update_status",
     },
-#    Payment Entry":{
-#         "onload":"kinjal_organics.public.py.payment_entry.onload_payment_entry"
-#     } "
+   "Payment Entry":{
+        "on_submit":"kinjal_organics.public.py.payment_entry.allow_one_time_advance",
+        "on_cancel":"kinjal_organics.public.py.payment_entry.allow_one_time_advance"
+    } 
 }
 # doc_events = {
 # 	"*": {

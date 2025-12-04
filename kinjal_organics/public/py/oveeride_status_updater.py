@@ -251,7 +251,7 @@ class custom_StatusUpdater(ERPNextStatusUpdater):
 
 				if d.doctype == args["source_dt"] and d.get(args["join_field"]):
 					args["name"] = d.get(args["join_field"])
-
+					
 					# get all qty where qty > target_field
 					item = frappe.db.sql(
 						"""select item_code, `{target_ref_field}`,
@@ -261,20 +261,64 @@ class custom_StatusUpdater(ERPNextStatusUpdater):
 						args["name"],
 						as_dict=1,
 					)
-					if item:
-						item = item[0]
-						item["idx"] = d.idx
-						item["target_ref_field"] = args["target_ref_field"].replace("_", " ")
+					if self.doctype == "Purchase Receipt" :
+						po_item = frappe.db.sql(
+							"""select item_code, `{target_ref_field}`, `{target_field}`,
+							receipt_received_qty, parenttype, parent
+							from `tab{target_dt}`
+							where name=%s and docstatus=1""".format(**args),
+							args["name"],
+							as_dict=1,
+						)
 
-						# if not item[args['target_ref_field']]:
-						# 	msgprint(_("Note: System will not check over-delivery and over-booking for Item {0} as quantity or amount is 0").format(item.item_code))
-						if args.get("no_allowance"):
-							item["reduce_by"] = item[args["target_field"]] - item[args["target_ref_field"]]
-							if item["reduce_by"] > 0.01:
-								self.limits_crossed_error(args, item, "qty")
-							
-						elif item[args["target_ref_field"]]:
-							self.check_overflow_with_allowance(item, args)
+						if not po_item:
+							frappe.throw("Item not found")
+
+						# Convert list → dict
+						po_item = po_item[0]
+
+						# Now safe to use string indices
+						parent_totals = frappe.db.get_value(
+							po_item["parenttype"],
+							po_item["parent"],
+							["total_qty", "total_received_qty"],
+							as_dict=1
+						)
+
+						po_item["parent_total_qty"] = parent_totals.get("total_qty")
+						po_item["parent_total_received_qty"] = parent_totals.get("total_received_qty")
+
+						total_receive_qty_pr = po_item["parent_total_received_qty"] + self.total_qty
+						if self.docstatus == 1 :
+							if po_item :
+								if args.get("no_allowance"):
+									item["reduce_by"] = total_receive_qty_pr - po_item["parent_total_qty"]
+									
+									if item["reduce_by"] > 0.01:
+										self.limits_crossed_error(args, po_item, "qty")
+										
+									
+								elif po_item["parent_total_received_qty"]:
+									
+									self.check_overflow_with_allowance(po_item, args)
+					else :
+						if item:
+							item = item[0]
+							item["idx"] = d.idx
+							item["target_ref_field"] = args["target_ref_field"].replace("_", " ")
+
+							# if not item[args['target_ref_field']]:
+							# msgprint(_("Note: System will not check over-delivery and over-booking for Item {0} as quantity or amount is 0").format(item.item_code))
+							if args.get("no_allowance"):
+								item["reduce_by"] = item[args["target_field"]] - item[args["target_ref_field"]]
+								
+								if item["reduce_by"] > 0.01:
+									self.limits_crossed_error(args, item, "qty")
+									
+								
+							elif item[args["target_ref_field"]]:
+								
+								self.check_overflow_with_allowance(item, args)
 
 
 	def check_overflow_with_allowance(self, item, args):
@@ -282,7 +326,11 @@ class custom_StatusUpdater(ERPNextStatusUpdater):
 		Checks if there is overflow condering a relaxation allowance
 		"""
 		qty_or_amount = "qty" if "qty" in args["target_ref_field"] else "amount"
-
+		po_items = frappe.get_all(
+				"Purchase Order Item",
+				filters={"parent": item.parent},
+				fields=["item_code", "qty", "received_qty", "idx","receipt_received_qty"]
+			)
 		# check if overflow is within allowance
 		(
 			allowance,
@@ -304,21 +352,38 @@ class custom_StatusUpdater(ERPNextStatusUpdater):
 			"Accounts Settings", "role_allowed_to_over_bill"
 		)
 		role = role_allowed_to_over_deliver_receive if qty_or_amount == "qty" else role_allowed_to_over_bill
-
+		po_receipt_qty = sum(flt(i.receipt_received_qty) for i in po_items)
+		actual_received = flt(self.total_qty) + po_receipt_qty
+		total_qty = sum(flt(i.qty) for i in po_items)
+		po_overflow_percent = ((actual_received - total_qty)/total_qty)*100
 		overflow_percent = (
 			(item[args["target_field"]] - item[args["target_ref_field"]]) / item[args["target_ref_field"]]
 		) * 100
 
-		if overflow_percent - allowance > 0.01:
-			item["max_allowed"] = flt(item[args["target_ref_field"]] * (100 + allowance) / 100)
-			item["reduce_by"] = item[args["target_field"]] - item["max_allowed"]
-
-			if role not in frappe.get_roles():
-				print("hello")
-				self.limits_crossed_error(args, item, qty_or_amount)
-			else:
-				self.warn_about_bypassing_with_role(item, qty_or_amount, role)
-				print("not checking limits crossed error")
+		if self.doctype == "Purchase Receipt" :
+			if po_overflow_percent - allowance > 0.01:
+				item["max_allowed"] = flt(total_qty * (100 + allowance) / 100)
+				item["reduce_by"] = actual_received - item["max_allowed"]
+				# frappe.throw(f""" hello {item['reduce_by']}""")
+				if role not in frappe.get_roles():
+					print("hello")
+					
+					self.limits_crossed_error(args, item, qty_or_amount)
+				else:
+					self.warn_about_bypassing_with_role(item, qty_or_amount, role)
+					print("not checking limits crossed error")
+		else :
+			if overflow_percent - allowance > 0.01:
+				item["max_allowed"] = flt(item[args["target_ref_field"]] * (100 + allowance) / 100)
+				item["reduce_by"] = item[args["target_field"]] - item["max_allowed"]
+				frappe.throw(f""" hello {po_overflow_percent}""")
+				if role not in frappe.get_roles():
+					print("hello")
+					
+					self.limits_crossed_error(args, item, qty_or_amount)
+				else:
+					self.warn_about_bypassing_with_role(item, qty_or_amount, role)
+					frappe.throw("not checking limits crossed error")
 
 
 	def limits_crossed_error(self, args, item, qty_or_amount):
@@ -356,14 +421,14 @@ class custom_StatusUpdater(ERPNextStatusUpdater):
 			total_receive_qty = sum(flt(i.received_qty) for i in po_items)
 			total_receipt_receive_qty = sum(flt(i.receipt_received_qty) for i in po_items)
 			total_qty = sum(flt(i.qty) for i in po_items)
-			actual_received = total_receipt_receive_qty + flt(item.qty)
+			actual_received = total_receipt_receive_qty + flt(self.total_qty)
 			# Optional: Debug log to check values
 			frappe.logger().info(f"Total PO Qty: {total_qty}, Total Received Qty: {total_receive_qty}")
-			# frappe.throw(qty_or_amount)
+			# frappe.throw(f"""{actual_received}""")
 			# frappe.throw(f"{total_receive_qty},{total_qty}")
-			if total_receive_qty > total_qty:
+			if actual_received > total_qty:
 				# frappe.throw(f"its code Working = {total_qty}")
-				reduce_by_po = total_receive_qty - total_qty
+				reduce_by_po = actual_received - total_qty
 				frappe.throw(
                 _(
                     "This document is over limit by {0}. Are you making another {1} against the same {2}?"

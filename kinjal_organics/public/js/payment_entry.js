@@ -46,31 +46,46 @@ frappe.ui.form.on('Payment Entry', {
                 frappe.throw("The amount paid cannot exceed the total allocated amount.");
             }
         }
-      if(frm.doc.party_type=="Supplier"){
-        if(frm.doc.total_allocated_amount !=0 && frm.doc.paid_amount > frm.doc.total_allocated_amount){
-            frappe.throw("The amount paid cannot exceed the total allocated amount.");
-        }
-        let r = await frappe.call({
-        method: 'kinjal_organics.public.py.payment_entry.get_supplier_payment_permission',
+      if (frm.doc.party_type == "Supplier") {
+
+    let r = await frappe.call({
+        method: "kinjal_organics.public.py.payment_entry.get_supplier_payment_permission",
         args: {
             supplier: frm.doc.party
         }
     });
-     // Ensure r.message exists
-    const data = r.message || {allow_advance_payment: 0, advance_limit: 0};
 
-    // Validation logic
-     if (data.allow_advance_payment === 0) {
-         frappe.throw("The amount paid cannot exceed the Advance limit.");
-     }
-     else if (data.allow_advance_payment === 1){
-        
-         if ((frm.doc.party_balance + frm.doc.paid_amount) > data.advance_limit) {
-            console.log(data.advance_limit)
-            frappe.throw("The amount paid cannot exceed the Advance limit.");
+    const data = r.message || {};
+
+    const allow_advance = data.allow_advance_payment || 0;
+    const allow_once = data.allow_one_time_advance || 0;
+    const advance_limit = data.advance_limit || 0;
+
+    const party_balance = Math.abs(frm.doc.party_balance) || 0;
+    const paid_amount = Math.abs(frm.doc.paid_amount) || 0;
+
+    // ----------------------------------------------------------
+    // 1️⃣ CASE: Advance NOT allowed (both flags are 0)
+    // ----------------------------------------------------------
+    if (allow_advance === 0 && allow_once === 0) {
+
+        if (paid_amount > party_balance) {
+            frappe.throw("Advance is not permitted because both advance options are disabled.");
         }
-     }
-      }
+
+        return; // Do not continue to next logic
+    }
+
+    // ----------------------------------------------------------
+    // 2️⃣ CASE: Advance allowed (either one is enabled)
+    // ----------------------------------------------------------
+    const new_total = party_balance + paid_amount;
+
+    if (new_total > advance_limit) {
+        frappe.throw("The amount paid cannot exceed the Advance limit.");
+    }
+}
+
 
     }
 });

@@ -28,9 +28,11 @@ from erpnext.stock.utils import get_bin
 
 def update_purchase_receipt(doc=None, method=None):
     frappe.enqueue(po_qty_update_example, queue="long", doc=doc.name)
-    validate_po_state_on_submit(doc, method)
+    # validate_po_state_on_submit(doc, method)
+    validate_po_receive_on_submit(doc,method)
 def cancel_purchase_receipt(doc=None,method=None):
     frappe.enqueue(po_qty_cancel_example, queue="long", doc=doc.name)
+    validate_po_receive_on_cancel(doc,method)
     # frappe.enqueue(cancel_po_qty_update, queue="long", doc=doc.name)
 
 
@@ -145,9 +147,6 @@ def po_qty_update_example(doc, method=None):
     elif isinstance(doc, dict):
         doc = frappe.get_doc("Purchase Receipt", doc.get("name"))
 
-    # Only run if merge_item == 1
-    
-
     processed_orders = set()
 
     for item in doc.items:
@@ -158,83 +157,101 @@ def po_qty_update_example(doc, method=None):
         try:
             po_doc = frappe.get_doc("Purchase Order", po_name)
             frappe.log_error("Merge Debug", f"Processing PO: {po_doc.name}")
-            po_total_received_qty = 0
-            for poitem in po_doc.items :
-                po_total_received_qty += poitem.receipt_received_qty
-            po_received_qty = po_total_received_qty + doc.total_qty
-            if po_received_qty <= po_doc.total_qty :
-                # frappe.throw("Its worked")
-                # Group PR items belonging to the same PO
-                related_pr_items = [i for i in doc.items if i.purchase_order == po_name]
-                merged_data = {}
 
-                for pr_item in related_pr_items:
-                    key = (pr_item.item_code, pr_item.uom, pr_item.rate)
-                    if key not in merged_data:
-                        merged_data[key] = {"total_qty": 0, "items": []}
-                    merged_data[key]["total_qty"] += flt(pr_item.qty)
-                    merged_data[key]["items"].append(pr_item)
+            po_doc.flags.ignore_validate_update_after_submit = True
+            po_doc.flags.ignore_permissions = True
+            po_doc.flags.ignore_mandatory = True
 
-                po_doc.flags.ignore_validate_update_after_submit = True
-                po_doc.flags.ignore_permissions = True
-                po_doc.flags.ignore_mandatory = True
-                
-                # Loop through merged data
-                for (item_code, uom, rate), data in merged_data.items():
-                    
-                    total_qty = data["total_qty"]
-                    remaining_qty = total_qty
-                    
-                    po_items = [
-                        po_item for po_item in po_doc.items
-                        if po_item.item_code == item_code and po_item.qty > po_item.receipt_received_qty
+            # Group PR items for this PO
+            related_pr_items = [i for i in doc.items if i.purchase_order == po_name]
+
+            for pr_item in related_pr_items:
+
+                item_code = pr_item.item_code
+                remaining_qty = flt(pr_item.qty)
+                primary_po_item_name = getattr(pr_item, "purchase_order_item", None)
+
+                # --- STEP 1: PRIORITY ALLOCATION TO SAME PO ITEM ROW ---
+                if primary_po_item_name:
+                    try:
+                        primary_row = frappe.get_doc("Purchase Order Item", primary_po_item_name)
+                        pending_primary = flt(primary_row.qty) - flt(primary_row.receipt_received_qty)
+
+                        if pending_primary > 0:
+                            allocate = min(pending_primary, remaining_qty)
+
+                            new_received = flt(primary_row.receipt_received_qty) + allocate
+                            new_pending = flt(primary_row.qty) - new_received
+
+                            frappe.db.set_value(
+                                "Purchase Order Item",
+                                primary_row.name,
+                                {
+                                    "received_qty": new_received,
+                                    "receipt_received_qty": new_received,
+                                    "custom_pending_qty": new_pending
+                                }
+                            )
+
+                            remaining_qty -= allocate
+
+                    except Exception:
+                        frappe.log_error("Primary Allocation Error", frappe.get_traceback())
+
+                # --- STEP 2: FIFO ALLOCATION FOR REMAINING QTY ---
+                if remaining_qty > 0:
+                    fifo_rows = [
+                        r for r in po_doc.items
+                        if r.item_code == item_code
+                        and flt(r.qty) > flt(r.receipt_received_qty)
+                        and r.name != primary_po_item_name
                     ]
 
-                    po_items.sort(key=lambda x: x.idx)
+                    fifo_rows.sort(key=lambda x: x.idx)
 
-                    for po_item in po_items:
-                        pending_qty = flt(po_item.qty) - flt(po_item.receipt_received_qty)
-                        if pending_qty <= 0:
+                    for row in fifo_rows:
+                        pending = flt(row.qty) - flt(row.receipt_received_qty)
+                        if pending <= 0:
                             continue
 
-                        allocate_qty = min(pending_qty, remaining_qty)
-                        new_received = flt(po_item.receipt_received_qty) + allocate_qty
-                        new_pending = flt(po_item.qty) - new_received
+                        allocate = min(pending, remaining_qty)
 
-                        # Update each PO Item directly in DB
+                        new_received = flt(row.receipt_received_qty) + allocate
+                        new_pending = flt(row.qty) - new_received
+
                         frappe.db.set_value(
                             "Purchase Order Item",
-                            po_item.name,
+                            row.name,
                             {
                                 "received_qty": new_received,
-                                "receipt_received_qty":new_received,
-                                "custom_pending_qty": new_pending if hasattr(po_item, "custom_pending_qty") else None
+                                "receipt_received_qty": new_received,
+                                "custom_pending_qty": new_pending
                             }
                         )
 
-                        remaining_qty -= allocate_qty
+                        remaining_qty -= allocate
                         if remaining_qty <= 0:
                             break
 
-                    if remaining_qty > 0:
-                        frappe.log_error("Unallocated Qty", f"{item_code}: {remaining_qty} qty not allocated")
+                if remaining_qty > 0:
+                    frappe.log_error("Unallocated Qty", f"{item_code}: {remaining_qty} qty could not be allocated")
 
-                # --- Update PO per_received percentage ---
-                total_received = sum(flt(i.receipt_received_qty ) for i in po_doc.items)
-            
-                full_total_received = total_received + doc.total_qty
-                total_ordered = sum(flt(i.qty) for i in po_doc.items)
-                per_received = (full_total_received / total_ordered * 100) if total_ordered else 0
+            # --- Update PO per_received percentage ---
+            total_received = sum(flt(i.receipt_received_qty) for i in po_doc.items)
+            total_receive = total_received + doc.total_qty
+            total_ordered = sum(flt(i.qty) for i in po_doc.items)
 
-                frappe.db.set_value("Purchase Order", po_doc.name, "per_received", per_received)
-                frappe.log_error("Per Received Success", f"PO {per_received} updated successfully")
-                frappe.db.commit()
-                frappe.log_error("PO Merge Success", f"PO {po_doc.name} updated successfully")
+            per_received = (total_receive / total_ordered * 100) if total_ordered else 0
+            frappe.db.set_value("Purchase Order", po_doc.name, "per_received", per_received)
+            # frappe.log_error("PO Received Per", f"PO {per_received} updated successfully")
+            frappe.log_error("PO Merge Success", f"PO {po_doc.name} updated successfully")
+            frappe.db.commit()
 
-                processed_orders.add(po_name)
+            processed_orders.add(po_name)
 
         except Exception:
             frappe.log_error("PO Merge Error", f"{po_name}: {frappe.get_traceback()}")
+
 
 
 
@@ -312,7 +329,7 @@ def validate_po_state_on_submit(doc, method=None):
                 # frappe.throw(f"{reduce_by}")
                 frappe.throw(
                 _(
-                    "This document is over limit by {0}. Are you making another {1} against the same {2}?"
+                    "Example This document is over limit by {0}. Are you making another {1} against the same {2}?"
                 ).format(
                     frappe.bold(reduce_by),
                     frappe.bold("Purchase Order"),
@@ -322,3 +339,79 @@ def validate_po_state_on_submit(doc, method=None):
                 title=_("Limit Crossed"),
                 )   
 
+def validate_po_receive_on_submit(doc, method=None):
+    """
+    Prevent submitting a Purchase Receipt if any linked Purchase Order
+    is in 'Re-Approve' state and update PO received/pending quantity 
+    only once per PO even if multiple PR items refer to it.
+    """
+
+    # Collect unique purchase orders from PR items
+    po_list = set([item.purchase_order for item in doc.items if item.purchase_order])
+
+    for po_name in po_list:
+        po = frappe.get_doc("Purchase Order", po_name)
+
+        total_po_qty = po.total_qty   # Total ordered qty
+        total_received_qty = 0
+
+        # Sum existing received qty
+        for d in po.items:
+            total_received_qty += d.receipt_received_qty
+
+        # Add incoming received qty from the PR
+        for item in doc.items:
+            if item.purchase_order == po_name:
+                total_received_qty += item.qty
+
+        # Compute pending qty
+        pending_qty = total_po_qty - total_received_qty
+
+        # Update PO only once
+        frappe.db.set_value(
+            "Purchase Order",
+            po_name,
+            {
+                "total_received_qty": total_received_qty,
+                "total_pending_qty": pending_qty
+            }
+        )
+
+
+def validate_po_receive_on_cancel(doc, method=None):
+    """
+    Prevent submitting a Purchase Receipt if any linked Purchase Order
+    is in 'Re-Approve' state and update PO received/pending quantity 
+    only once per PO even if multiple PR items refer to it.
+    """
+
+    # Collect unique purchase orders from PR items
+    po_list = set([item.purchase_order for item in doc.items if item.purchase_order])
+
+    for po_name in po_list:
+        po = frappe.get_doc("Purchase Order", po_name)
+
+        total_po_qty = po.total_qty   # Total ordered qty
+        total_received_qty = po.total_qty - doc.total_qty
+
+        # Sum existing received qty
+        # for d in po.items:
+        #     total_received_qty += d.receipt_received_qty
+
+        # # Add incoming received qty from the PR
+        # for item in doc.items:
+        #     if item.purchase_order == po_name:
+        #         total_received_qty += item.qty
+
+        # Compute pending qty
+        pending_qty = total_po_qty - total_received_qty
+
+        # Update PO only once
+        frappe.db.set_value(
+            "Purchase Order",
+            po_name,
+            {
+                "total_received_qty": total_received_qty,
+                "total_pending_qty": pending_qty
+            }
+        )
