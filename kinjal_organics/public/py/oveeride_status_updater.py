@@ -352,15 +352,14 @@ class custom_StatusUpdater(ERPNextStatusUpdater):
 			"Accounts Settings", "role_allowed_to_over_bill"
 		)
 		role = role_allowed_to_over_deliver_receive if qty_or_amount == "qty" else role_allowed_to_over_bill
-		po_receipt_qty = sum(flt(i.receipt_received_qty) for i in po_items)
-		actual_received = flt(self.total_qty) + po_receipt_qty
-		total_qty = sum(flt(i.qty) for i in po_items)
-		po_overflow_percent = ((actual_received - total_qty)/total_qty)*100
-		overflow_percent = (
-			(item[args["target_field"]] - item[args["target_ref_field"]]) / item[args["target_ref_field"]]
-		) * 100
+		
+		
 
 		if self.doctype == "Purchase Receipt" :
+			po_receipt_qty = sum(flt(i.receipt_received_qty) for i in po_items)
+			actual_received = flt(self.total_qty) + po_receipt_qty
+			total_qty = sum(flt(i.qty) for i in po_items)
+			po_overflow_percent = ((actual_received - total_qty)/total_qty)*100
 			if po_overflow_percent - allowance > 0.01:
 				item["max_allowed"] = flt(total_qty * (100 + allowance) / 100)
 				item["reduce_by"] = actual_received - item["max_allowed"]
@@ -373,6 +372,9 @@ class custom_StatusUpdater(ERPNextStatusUpdater):
 					self.warn_about_bypassing_with_role(item, qty_or_amount, role)
 					print("not checking limits crossed error")
 		else :
+			overflow_percent = (
+			(item[args["target_field"]] - item[args["target_ref_field"]]) / item[args["target_ref_field"]]
+			) * 100
 			if overflow_percent - allowance > 0.01:
 				item["max_allowed"] = flt(item[args["target_ref_field"]] * (100 + allowance) / 100)
 				item["reduce_by"] = item[args["target_field"]] - item["max_allowed"]
@@ -429,11 +431,12 @@ class custom_StatusUpdater(ERPNextStatusUpdater):
 			if actual_received > total_qty:
 				# frappe.throw(f"its code Working = {total_qty}")
 				reduce_by_po = actual_received - total_qty
+				# reduce_per = total_qty * 
 				frappe.throw(
                 _(
                     "This document is over limit by {0}. Are you making another {1} against the same {2}?"
                 ).format(
-                    frappe.bold(reduce_by_po),
+                    frappe.bold(item["reduce_by"]),
                     frappe.bold("Purchase Order"),
                     frappe.bold("Purchase Receipt")
                 )
