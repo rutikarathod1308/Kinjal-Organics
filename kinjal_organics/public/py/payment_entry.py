@@ -32,26 +32,52 @@ def get_selected_enabled_roles():
     
     
 @frappe.whitelist()
-def get_customer_payment_permission(customer):
-    return frappe.db.get_value("Customer", customer, "advance_payment") or "None"
+def get_customer_payment_permission(customer=None):
+    if not customer:
+        return None
+
+    return frappe.db.get_value("Customer", customer, "advance_payment")
+
 
 
 
 @frappe.whitelist()
 def get_supplier_payment_permission(supplier):
-    # Fetch multiple fields
+    # Fetch supplier permission fields
     supplier_data = frappe.db.get_value(
         "Supplier",
         supplier,
-        ["allow_advance_payment", "advance_limit","allow_one_time_advance"],  # list of fields
-        as_dict=True  # return as dictionary
+        ["allow_advance_payment", "advance_limit", "allow_one_time_advance"],
+        as_dict=True
     )
-    
-    # Return data (or default if not found)
+
+    # Default if supplier not found
     if not supplier_data:
-        supplier_data = {"allow_advance_payment": "None", "advance_limit": 0}
-    
-    return supplier_data
+        supplier_data = {
+            "allow_advance_payment": 0,
+            "advance_limit": 0,
+            "allow_one_time_advance": 0
+        }
+
+    # Fetch payment entries for this supplier
+    payment_data = frappe.db.get_all(
+    "Payment Entry",
+    filters={
+        "party_type": "Supplier",
+        "party": supplier,
+        "docstatus": 1,
+        "unallocated_amount": ["!=", 0]
+    },
+    fields=["name", "unallocated_amount"]
+    )
+
+    total_unallocated = sum(d.unallocated_amount for d in payment_data)
+
+    return {
+        "supplier_data": supplier_data,
+        "payment_data": total_unallocated
+    }
+
 
 
     

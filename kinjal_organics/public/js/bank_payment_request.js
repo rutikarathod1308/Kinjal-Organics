@@ -25,14 +25,14 @@ frappe.ui.form.on("Bank Payment Request", {
                     posting_date: ["<=", frm.doc.transaction_date],
                     docstatus: 1
                 },
-                fields: ["name", "posting_date", "grand_total"]
+                fields: ["name", "posting_date", "outstanding_amount"]
             }
         });
 
         let total_amount = 0;
 
         invoices.message.forEach(inv => {
-            total_amount += flt(inv.grand_total);
+            total_amount += flt(inv.outstanding_amount);
         });
 
         const payment = await frappe.call({
@@ -55,21 +55,18 @@ frappe.ui.form.on("Bank Payment Request", {
         payment.message.forEach(pay => {
             payment_amount += flt(pay.paid_amount);
         });
-        if(total_amount >= payment_amount){
-            unpaid_amount = total_amount - payment_amount
-        }
-        else{
-            advance_amount = Math.abs(total_amount - payment_amount)
-        }
+        console.log("Total Amount: ", total_amount);
+        console.log("Payment Amount: ", frm.doc.net_total);
+        
         // console.log(unpaid_amount)
         if (!allow_advance) {
             // Advance NOT allowed → strict check
-            if (frm.doc.net_total > Math.round(unpaid_amount)) {
+            if (frm.doc.net_total > Math.round(total_amount)) {
                 frappe.throw("The amount paid cannot exceed the supplier's outstanding amount.");
             }
         } else {
             // Advance allowed → check advance limit (optional)
-            if (frm.doc.net_total > Math.round(unpaid_amount + advance_limit)) {
+            if (frm.doc.net_total > Math.round(total_amount + advance_limit)) {
                 frappe.throw(
                     `Allowed advance limit exceeded. 
                     Outstanding: ${Math.round(unpaid_amount)}  
